@@ -1,0 +1,1285 @@
+#!/bin/bash
+
+# HOPS Service Definitions
+# Contains all Docker Compose service configurations
+# Version: 3.1.0
+
+# This script provides functions to generate Docker Compose service definitions
+# Usage: Source this script and call generate_service_definition <service_name>
+
+# --------------------------------------------
+# COMMON CONFIGURATIONS
+# --------------------------------------------
+
+# Common environment variables for LinuxServer containers
+get_linuxserver_env() {
+    cat <<EOF
+      - PUID=\${PUID}
+      - PGID=\${PGID}
+      - TZ=\${TZ}
+      - UMASK=002
+EOF
+}
+
+# Common restart policy
+get_restart_policy() {
+    echo "    restart: unless-stopped"
+}
+
+# Common network configuration
+get_homelab_network() {
+    cat <<EOF
+    networks:
+      - homelab
+EOF
+}
+
+# Common healthcheck for web services
+get_web_healthcheck() {
+    local port=$1
+    local path=${2:-"/"}
+    cat <<EOF
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:$port$path || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+EOF
+}
+
+# --------------------------------------------
+# MEDIA MANAGEMENT SERVICES (*ARR STACK)
+# --------------------------------------------
+
+generate_sonarr() {
+    cat <<EOF
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+$(get_restart_policy)
+    ports:
+      - "8989:8989"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/sonarr:/config
+      - \${DATA_ROOT}:/data
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 8989)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(\`sonarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+
+EOF
+}
+
+generate_radarr() {
+    cat <<EOF
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+$(get_restart_policy)
+    ports:
+      - "7878:7878"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/radarr:/config
+      - \${DATA_ROOT}:/data
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 7878)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(\`radarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.routers.radarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+
+EOF
+}
+
+generate_lidarr() {
+    cat <<EOF
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+$(get_restart_policy)
+    ports:
+      - "8686:8686"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/lidarr:/config
+      - \${DATA_ROOT}:/data
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 8686)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lidarr.rule=Host(\`lidarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.lidarr.entrypoints=websecure"
+      - "traefik.http.routers.lidarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lidarr.loadbalancer.server.port=8686"
+
+EOF
+}
+
+generate_readarr() {
+    cat <<EOF
+  readarr:
+    image: lscr.io/linuxserver/readarr:develop
+    container_name: readarr
+$(get_restart_policy)
+    ports:
+      - "8787:8787"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/readarr:/config
+      - \${DATA_ROOT}:/data
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 8787)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.readarr.rule=Host(\`readarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.readarr.entrypoints=websecure"
+      - "traefik.http.routers.readarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.readarr.loadbalancer.server.port=8787"
+
+EOF
+}
+
+generate_bazarr() {
+    cat <<EOF
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+$(get_restart_policy)
+    ports:
+      - "6767:6767"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/bazarr:/config
+      - \${DATA_ROOT}:/data
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 6767)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bazarr.rule=Host(\`bazarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.bazarr.entrypoints=websecure"
+      - "traefik.http.routers.bazarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
+
+EOF
+}
+
+generate_prowlarr() {
+    cat <<EOF
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+$(get_restart_policy)
+    ports:
+      - "9696:9696"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/prowlarr:/config
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 9696)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.rule=Host(\`prowlarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.prowlarr.entrypoints=websecure"
+      - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+
+EOF
+}
+
+generate_tdarr() {
+    cat <<EOF
+  tdarr:
+    image: ghcr.io/haveagitgat/tdarr:latest
+    container_name: tdarr
+$(get_restart_policy)
+    ports:
+      - "8265:8265"
+      - "8266:8266"
+    environment:
+$(get_linuxserver_env)
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - nodeName=MainNode
+    volumes:
+      - \${CONFIG_ROOT}/tdarr/server:/app/server
+      - \${CONFIG_ROOT}/tdarr/configs:/app/configs
+      - \${CONFIG_ROOT}/tdarr/logs:/app/logs
+      - \${DATA_ROOT}/media:/media
+      - \${DATA_ROOT}/downloads/tdarr:/temp
+    devices:
+      - /dev/dri:/dev/dri # Intel GPU
+$(get_web_healthcheck 8265)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tdarr.rule=Host(\`tdarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.tdarr.entrypoints=websecure"
+      - "traefik.http.routers.tdarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.tdarr.loadbalancer.server.port=8265"
+
+EOF
+}
+
+# --------------------------------------------
+# DOWNLOAD CLIENTS
+# --------------------------------------------
+
+generate_qbittorrent() {
+    cat <<EOF
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+$(get_restart_policy)
+    ports:
+      - "8082:8082"
+      - "6881:6881"
+      - "6881:6881/udp"
+    environment:
+$(get_linuxserver_env)
+      - WEBUI_PORT=8082
+    volumes:
+      - \${CONFIG_ROOT}/qbittorrent:/config
+      - \${DATA_ROOT}/downloads/torrents:/data/torrents
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 8082)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent.rule=Host(\`qbittorrent.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.qbittorrent.entrypoints=websecure"
+      - "traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8082"
+
+EOF
+}
+
+generate_transmission() {
+    cat <<EOF
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
+$(get_restart_policy)
+    ports:
+      - "9091:9091"
+      - "51413:51413"
+      - "51413:51413/udp"
+    environment:
+$(get_linuxserver_env)
+      - USER=admin
+      - PASS=\${DEFAULT_ADMIN_PASSWORD}
+    volumes:
+      - \${CONFIG_ROOT}/transmission:/config
+      - \${DATA_ROOT}/downloads/torrents:/data/torrents
+      - \${DATA_ROOT}/downloads/torrents/watch:/watch
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 9091 "/transmission/web/")
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.transmission.rule=Host(\`transmission.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.transmission.entrypoints=websecure"
+      - "traefik.http.routers.transmission.tls.certresolver=letsencrypt"
+      - "traefik.http.services.transmission.loadbalancer.server.port=9091"
+
+EOF
+}
+
+generate_nzbget() {
+    cat <<EOF
+  nzbget:
+    image: lscr.io/linuxserver/nzbget:latest
+    container_name: nzbget
+$(get_restart_policy)
+    ports:
+      - "6789:6789"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/nzbget:/config
+      - \${DATA_ROOT}/downloads/usenet:/data/usenet
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 6789)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nzbget.rule=Host(\`nzbget.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.nzbget.entrypoints=websecure"
+      - "traefik.http.routers.nzbget.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nzbget.loadbalancer.server.port=6789"
+
+EOF
+}
+
+generate_sabnzbd() {
+    cat <<EOF
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+$(get_restart_policy)
+    ports:
+      - "8080:8080"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/sabnzbd:/config
+      - \${DATA_ROOT}/downloads/usenet:/data/usenet
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 8080)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sabnzbd.rule=Host(\`sabnzbd.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.sabnzbd.entrypoints=websecure"
+      - "traefik.http.routers.sabnzbd.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sabnzbd.loadbalancer.server.port=8080"
+
+EOF
+}
+
+# --------------------------------------------
+# MEDIA SERVERS
+# --------------------------------------------
+
+generate_jellyfin() {
+    cat <<EOF
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+$(get_restart_policy)
+    ports:
+      - "8096:8096"
+      - "8920:8920" # HTTPS
+      - "7359:7359/udp" # Auto-discovery
+      - "1900:1900/udp" # DLNA
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://\${DOMAIN:-localhost}:8096
+    volumes:
+      - \${CONFIG_ROOT}/jellyfin:/config
+      - \${CONFIG_ROOT}/jellyfin/cache:/cache
+      - \${DATA_ROOT}/media:/media:ro
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - /dev/dri:/dev/dri # Intel GPU
+    group_add:
+      - "109" # render group for GPU access
+$(get_web_healthcheck 8096 "/health")
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(\`jellyfin.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+
+EOF
+}
+
+generate_plex() {
+    cat <<EOF
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plex
+$(get_restart_policy)
+    ports:
+      - "32400:32400"
+      - "1900:1900/udp" # DLNA
+      - "3005:3005" # Plex Companion
+      - "5353:5353/udp" # Bonjour/Avahi
+      - "8324:8324" # Roku via Plex Companion
+      - "32410:32410/udp" # GDM Network Discovery
+      - "32412:32412/udp" # GDM Network Discovery
+      - "32413:32413/udp" # GDM Network Discovery
+      - "32414:32414/udp" # GDM Network Discovery
+      - "32469:32469" # Plex DLNA Server
+    environment:
+      - PLEX_CLAIM=\${PLEX_CLAIM_TOKEN:-}
+      - PLEX_UID=\${PUID}
+      - PLEX_GID=\${PGID}
+      - TZ=\${TZ}
+      - HOSTNAME=PlexServer
+      - ADVERTISE_IP=http://\${DOMAIN:-localhost}:32400/
+    volumes:
+      - \${CONFIG_ROOT}/plex:/config
+      - \${CONFIG_ROOT}/plex/transcode:/transcode
+      - \${DATA_ROOT}/media:/data:ro
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - /dev/dri:/dev/dri # Intel GPU
+$(get_web_healthcheck 32400 "/identity")
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex.rule=Host(\`plex.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.plex.entrypoints=websecure"
+      - "traefik.http.routers.plex.tls.certresolver=letsencrypt"
+      - "traefik.http.services.plex.loadbalancer.server.port=32400"
+
+EOF
+}
+
+generate_emby() {
+    cat <<EOF
+  emby:
+    image: emby/embyserver:latest
+    container_name: emby
+$(get_restart_policy)
+    ports:
+      - "8097:8096"
+      - "8920:8920" # HTTPS
+    environment:
+      - UID=\${PUID}
+      - GID=\${PGID}
+      - GIDLIST=\${PGID}
+    volumes:
+      - \${CONFIG_ROOT}/emby:/config
+      - \${DATA_ROOT}/media:/data:ro
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - /dev/dri:/dev/dri # Intel GPU
+$(get_web_healthcheck 8096)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.emby.rule=Host(\`emby.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.emby.entrypoints=websecure"
+      - "traefik.http.routers.emby.tls.certresolver=letsencrypt"
+      - "traefik.http.services.emby.loadbalancer.server.port=8096"
+
+EOF
+}
+
+generate_jellystat() {
+    cat <<EOF
+  jellystat-db:
+    image: postgres:15
+    container_name: jellystat-db
+$(get_restart_policy)
+    environment:
+      - POSTGRES_DB=jfstat
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=\${DEFAULT_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  jellystat:
+    image: cyfershepard/jellystat:latest
+    container_name: jellystat
+$(get_restart_policy)
+    ports:
+      - "3000:3000"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=\${DEFAULT_DB_PASSWORD}
+      - POSTGRES_IP=jellystat-db
+      - POSTGRES_PORT=5432
+      - JWT_SECRET=\${DEFAULT_ADMIN_PASSWORD}
+    volumes:
+      - \${CONFIG_ROOT}/jellystat/backup-data:/app/backend/backup-data
+    depends_on:
+      - jellystat-db
+$(get_web_healthcheck 3000)
+    networks:
+      - homelab
+      - database
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellystat.rule=Host(\`jellystat.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.jellystat.entrypoints=websecure"
+      - "traefik.http.routers.jellystat.tls.certresolver=letsencrypt"
+      - "traefik.http.services.jellystat.loadbalancer.server.port=3000"
+
+EOF
+}
+
+# --------------------------------------------
+# REQUEST MANAGEMENT
+# --------------------------------------------
+
+generate_overseerr() {
+    cat <<EOF
+  overseerr:
+    image: sctx/overseerr:latest
+    container_name: overseerr
+$(get_restart_policy)
+    ports:
+      - "5055:5055"
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=\${TZ}
+    volumes:
+      - \${CONFIG_ROOT}/overseerr:/app/config
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 5055)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.overseerr.rule=Host(\`overseerr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.overseerr.entrypoints=websecure"
+      - "traefik.http.routers.overseerr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.overseerr.loadbalancer.server.port=5055"
+
+EOF
+}
+
+generate_jellyseerr() {
+    cat <<EOF
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+$(get_restart_policy)
+    ports:
+      - "5056:5055"
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=\${TZ}
+    volumes:
+      - \${CONFIG_ROOT}/jellyseerr:/app/config
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 5055)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyseerr.rule=Host(\`jellyseerr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.jellyseerr.entrypoints=websecure"
+      - "traefik.http.routers.jellyseerr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
+
+EOF
+}
+
+generate_ombi() {
+    cat <<EOF
+  ombi:
+    image: lscr.io/linuxserver/ombi:latest
+    container_name: ombi
+$(get_restart_policy)
+    ports:
+      - "3579:3579"
+    environment:
+$(get_linuxserver_env)
+    volumes:
+      - \${CONFIG_ROOT}/ombi:/config
+      - /etc/localtime:/etc/localtime:ro
+$(get_web_healthcheck 3579)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ombi.rule=Host(\`ombi.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.ombi.entrypoints=websecure"
+      - "traefik.http.routers.ombi.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ombi.loadbalancer.server.port=3579"
+
+EOF
+}
+
+# --------------------------------------------
+# REVERSE PROXY & SECURITY
+# --------------------------------------------
+
+generate_traefik() {
+    cat <<EOF
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+$(get_restart_policy)
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Dashboard
+    environment:
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_API_INSECURE=true
+      - TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:80
+      - TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:443
+      - TRAEFIK_PROVIDERS_DOCKER=true
+      - TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT=false
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=\${ACME_EMAIL:-admin@localhost}
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE=/letsencrypt/acme.json
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT=web
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - \${CONFIG_ROOT}/traefik/letsencrypt:/letsencrypt
+      - \${CONFIG_ROOT}/traefik:/etc/traefik
+    networks:
+      - traefik
+      - homelab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(\`traefik.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+EOF
+}
+
+generate_nginx-proxy-manager() {
+    cat <<EOF
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+$(get_restart_policy)
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81" # Admin interface
+    environment:
+      - DB_SQLITE_FILE=/data/database.sqlite
+    volumes:
+      - \${CONFIG_ROOT}/nginx-proxy-manager/data:/data
+      - \${CONFIG_ROOT}/nginx-proxy-manager/letsencrypt:/etc/letsencrypt
+$(get_web_healthcheck 81)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.npm.rule=Host(\`npm.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.npm.entrypoints=websecure"
+      - "traefik.http.routers.npm.tls.certresolver=letsencrypt"
+      - "traefik.http.services.npm.loadbalancer.server.port=81"
+
+EOF
+}
+
+generate_authelia() {
+    cat <<EOF
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+$(get_restart_policy)
+    ports:
+      - "9091:9091"
+    environment:
+      - TZ=\${TZ}
+    volumes:
+      - \${CONFIG_ROOT}/authelia:/config
+    command: --config /config/configuration.yml
+$(get_web_healthcheck 9091)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(\`auth.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls.certresolver=letsencrypt"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+
+EOF
+}
+
+# --------------------------------------------
+# MONITORING & MANAGEMENT
+# --------------------------------------------
+
+generate_portainer() {
+    cat <<EOF
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+$(get_restart_policy)
+    ports:
+      - "9000:9000"
+      - "9443:9443" # HTTPS
+    environment:
+      - TZ=\${TZ}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - \${CONFIG_ROOT}/portainer:/data
+    command: --admin-password-file /data/admin_password
+$(get_web_healthcheck 9000)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(\`portainer.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+EOF
+}
+
+generate_watchtower() {
+    cat <<EOF
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+$(get_restart_policy)
+    environment:
+      - TZ=\${TZ}
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *  # 4 AM daily
+      - WATCHTOWER_NOTIFICATIONS=email
+      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=\${WATCHTOWER_EMAIL_FROM:-watchtower@localhost}
+      - WATCHTOWER_NOTIFICATION_EMAIL_TO=\${WATCHTOWER_EMAIL_TO:-admin@localhost}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=\${WATCHTOWER_EMAIL_SERVER:-}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=\${WATCHTOWER_EMAIL_PORT:-587}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=\${WATCHTOWER_EMAIL_USER:-}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=\${WATCHTOWER_EMAIL_PASSWORD:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - homelab
+
+EOF
+}
+
+generate_uptime-kuma() {
+    cat <<EOF
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+$(get_restart_policy)
+    ports:
+      - "3001:3001"
+    environment:
+      - TZ=\${TZ}
+    volumes:
+      - \${CONFIG_ROOT}/uptime-kuma:/app/data
+$(get_web_healthcheck 3001)
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime-kuma.rule=Host(\`uptime.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.uptime-kuma.entrypoints=websecure"
+      - "traefik.http.routers.uptime-kuma.tls.certresolver=letsencrypt"
+      - "traefik.http.services.uptime-kuma.loadbalancer.server.port=3001"
+
+EOF
+}
+
+# --------------------------------------------
+# DATABASE SERVICES
+# --------------------------------------------
+
+generate_postgres() {
+    cat <<EOF
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+$(get_restart_policy)
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=homelab
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=\${DEFAULT_DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - \${CONFIG_ROOT}/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+EOF
+}
+
+generate_redis() {
+    cat <<EOF
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+$(get_restart_policy)
+    ports:
+      - "6379:6379"
+    environment:
+      - TZ=\${TZ}
+    volumes:
+      - redis_data:/data
+      - \${CONFIG_ROOT}/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass \${DEFAULT_DB_PASSWORD}
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+EOF
+}
+
+# --------------------------------------------
+# UTILITY FUNCTIONS
+# --------------------------------------------
+
+# Generate service definition based on service name
+generate_service_definition() {
+    local service_name="$1"
+    
+    case "$service_name" in
+        # Media Management (*arr stack)
+        "sonarr") generate_sonarr ;;
+        "radarr") generate_radarr ;;
+        "lidarr") generate_lidarr ;;
+        "readarr") generate_readarr ;;
+        "bazarr") generate_bazarr ;;
+        "prowlarr") generate_prowlarr ;;
+        "tdarr") generate_tdarr ;;
+        
+        # Download Clients
+        "qbittorrent") generate_qbittorrent ;;
+        "transmission") generate_transmission ;;
+        "nzbget") generate_nzbget ;;
+        "sabnzbd") generate_sabnzbd ;;
+        
+        # Media Servers
+        "jellyfin") generate_jellyfin ;;
+        "plex") generate_plex ;;
+        "emby") generate_emby ;;
+        "jellystat") generate_jellystat ;;
+        
+        # Request Management
+        "overseerr") generate_overseerr ;;
+        "jellyseerr") generate_jellyseerr ;;
+        "ombi") generate_ombi ;;
+        
+        # Reverse Proxy & Security
+        "traefik") generate_traefik ;;
+        "nginx-proxy-manager") generate_nginx-proxy-manager ;;
+        "authelia") generate_authelia ;;
+        
+        # Monitoring & Management
+        "portainer") generate_portainer ;;
+        "watchtower") generate_watchtower ;;
+        "uptime-kuma") generate_uptime-kuma ;;
+        
+        # Database Services
+        "postgres") generate_postgres ;;
+        "redis") generate_redis ;;
+        
+        *)
+            echo "# Service '$service_name' not found"
+            return 1
+            ;;
+    esac
+}
+
+# Generate complete docker-compose.yml file
+generate_complete_compose() {
+    local services=("$@")
+    local compose_file="docker-compose.yml"
+    
+    # Start with the base compose structure
+    cat > "$compose_file" <<EOF
+version: '3.8'
+
+networks:
+  homelab:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: \${DOCKER_SUBNET:-172.20.0.0/16}
+  traefik:
+    external: true
+    name: traefik
+  database:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+EOF
+
+    # Add each selected service
+    for service in "${services[@]}"; do
+        echo "  # --- $service ---" >> "$compose_file"
+        if generate_service_definition "$service" >> "$compose_file"; then
+            echo "✅ Added service: $service"
+        else
+            echo "⚠️ Failed to add service: $service"
+        fi
+    done
+    
+    echo "📝 Docker Compose file generated with ${#services[@]} services"
+}
+
+# Create service-specific configuration directories and files
+create_service_configs() {
+    local services=("$@")
+    local config_root="${CONFIG_ROOT:-/opt/appdata}"
+    
+    for service in "${services[@]}"; do
+        local service_dir="$config_root/$service"
+        mkdir -p "$service_dir"
+        
+        case "$service" in
+            "portainer")
+                # Create admin password file for Portainer
+                if [[ -n "${DEFAULT_ADMIN_PASSWORD}" ]] && command -v htpasswd &>/dev/null; then
+                    echo -n "${DEFAULT_ADMIN_PASSWORD}" | htpasswd -niB admin | cut -d: -f2 > "$service_dir/admin_password"
+                fi
+                ;;
+            "traefik")
+                mkdir -p "$service_dir/letsencrypt"
+                mkdir -p "$service_dir/dynamic"
+                # Create basic traefik config
+                cat > "$service_dir/traefik.yml" <<EOF
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: \${ACME_EMAIL:-admin@localhost}
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+EOF
+                ;;
+            "redis")
+                # Create basic Redis config
+                cat > "$service_dir/redis.conf" <<EOF
+# Redis configuration for HOPS
+bind 0.0.0.0
+port 6379
+timeout 300
+keepalive 60
+maxmemory 256mb
+maxmemory-policy allkeys-lru
+save 900 1
+save 300 10
+save 60 10000
+EOF
+                ;;
+            "postgres")
+                mkdir -p "$service_dir/init"
+                # Create initialization script for additional databases
+                cat > "$service_dir/init/create_databases.sql" <<EOF
+-- Create additional databases for services that need them
+CREATE DATABASE IF NOT EXISTS jellyfin_db;
+CREATE DATABASE IF NOT EXISTS authelia_db;
+EOF
+                ;;
+            "authelia")
+                # Create basic Authelia configuration
+                cat > "$service_dir/configuration.yml" <<EOF
+# Authelia configuration
+host: 0.0.0.0
+port: 9091
+log_level: info
+theme: dark
+jwt_secret: \${DEFAULT_ADMIN_PASSWORD}
+default_redirection_url: https://\${DOMAIN:-localhost}
+
+server:
+  host: 0.0.0.0
+  port: 9091
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2id
+      iterations: 1
+      salt_length: 16
+      parallelism: 8
+      memory: 64
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: "*.localhost"
+      policy: one_factor
+
+session:
+  name: authelia_session
+  secret: \${DEFAULT_ADMIN_PASSWORD}
+  expiration: 3600
+  inactivity: 300
+  domain: localhost
+
+regulation:
+  max_retries: 3
+  find_time: 120
+  ban_time: 300
+
+storage:
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt
+EOF
+                
+                # Create users database
+                cat > "$service_dir/users_database.yml" <<EOF
+users:
+  admin:
+    displayname: "Administrator"
+    password: "\$argon2id\$v=19\$m=65536,t=3,p=4\$c29tZXNhbHQ\$MNzk5BtR2vUhrp6qQEjRNw"  # password
+    email: admin@localhost
+    groups:
+      - admins
+      - dev
+EOF
+                ;;
+        esac
+        
+        # Set proper ownership if running as root
+        if [[ $EUID -eq 0 && -n "${PUID}" && -n "${PGID}" ]]; then
+            chown -R "${PUID}:${PGID}" "$service_dir" 2>/dev/null || true
+        fi
+    done
+}
+
+# Get service dependencies
+get_service_dependencies() {
+    local service="$1"
+    
+    case "$service" in
+        "jellystat")
+            echo "postgres"
+            ;;
+        "authelia")
+            echo "redis"
+            ;;
+        *)
+            # No dependencies
+            ;;
+    esac
+}
+
+# Get all dependencies for a list of services
+resolve_dependencies() {
+    local services=("$@")
+    local all_services=()
+    local processed=()
+    
+    # Add services and their dependencies
+    for service in "${services[@]}"; do
+        if [[ ! " ${processed[*]} " =~ " ${service} " ]]; then
+            all_services+=("$service")
+            processed+=("$service")
+            
+            # Add dependencies
+            local deps=$(get_service_dependencies "$service")
+            for dep in $deps; do
+                if [[ ! " ${processed[*]} " =~ " ${dep} " ]]; then
+                    all_services+=("$dep")
+                    processed+=("$dep")
+                fi
+            done
+        fi
+    done
+    
+    echo "${all_services[@]}"
+}
+
+# Get service ports for conflict checking
+get_service_ports() {
+    local service="$1"
+    
+    case "$service" in
+        "sonarr") echo "8989" ;;
+        "radarr") echo "7878" ;;
+        "lidarr") echo "8686" ;;
+        "readarr") echo "8787" ;;
+        "bazarr") echo "6767" ;;
+        "prowlarr") echo "9696" ;;
+        "tdarr") echo "8265 8266" ;;
+        "qbittorrent") echo "8082 6881 6881/udp" ;;
+        "transmission") echo "9091 51413 51413/udp" ;;
+        "nzbget") echo "6789" ;;
+        "sabnzbd") echo "8080" ;;
+        "jellyfin") echo "8096 8920 7359/udp 1900/udp" ;;
+        "plex") echo "32400 1900/udp 3005 5353/udp 8324 32410/udp 32412/udp 32413/udp 32414/udp 32469" ;;
+        "emby") echo "8097 8920" ;;
+        "jellystat") echo "3000" ;;
+        "overseerr") echo "5055" ;;
+        "jellyseerr") echo "5056" ;;
+        "ombi") echo "3579" ;;
+        "traefik") echo "80 443 8080" ;;
+        "nginx-proxy-manager") echo "80 443 81" ;;
+        "authelia") echo "9091" ;;
+        "portainer") echo "9000 9443" ;;
+        "uptime-kuma") echo "3001" ;;
+        "postgres") echo "5432" ;;
+        "redis") echo "6379" ;;
+        *) echo "" ;;
+    esac
+}
+
+# Print service summary
+print_service_summary() {
+    local services=("$@")
+    
+    echo "==========================="
+    echo "HOPS SERVICE SUMMARY"
+    echo "==========================="
+    echo "Selected services: ${#services[@]}"
+    echo
+    
+    # Categorize services
+    local media_mgmt=()
+    local download_clients=()
+    local media_servers=()
+    local request_mgmt=()
+    local proxy_security=()
+    local monitoring=()
+    local databases=()
+    
+    for service in "${services[@]}"; do
+        case "$service" in
+            sonarr|radarr|lidarr|readarr|bazarr|prowlarr|tdarr)
+                media_mgmt+=("$service") ;;
+            qbittorrent|transmission|nzbget|sabnzbd)
+                download_clients+=("$service") ;;
+            jellyfin|plex|emby|jellystat)
+                media_servers+=("$service") ;;
+            overseerr|jellyseerr|ombi)
+                request_mgmt+=("$service") ;;
+            traefik|nginx-proxy-manager|authelia)
+                proxy_security+=("$service") ;;
+            portainer|watchtower|uptime-kuma)
+                monitoring+=("$service") ;;
+            postgres|redis)
+                databases+=("$service") ;;
+        esac
+    done
+    
+    [[ ${#media_mgmt[@]} -gt 0 ]] && echo "📺 Media Management: ${media_mgmt[*]}"
+    [[ ${#download_clients[@]} -gt 0 ]] && echo "⬇️  Download Clients: ${download_clients[*]}"
+    [[ ${#media_servers[@]} -gt 0 ]] && echo "🎞️  Media Servers: ${media_servers[*]}"
+    [[ ${#request_mgmt[@]} -gt 0 ]] && echo "🎛️  Request Management: ${request_mgmt[*]}"
+    [[ ${#proxy_security[@]} -gt 0 ]] && echo "🔒 Proxy & Security: ${proxy_security[*]}"
+    [[ ${#monitoring[@]} -gt 0 ]] && echo "📈 Monitoring: ${monitoring[*]}"
+    [[ ${#databases[@]} -gt 0 ]] && echo "🗄️  Databases: ${databases[*]}"
+    
+    echo
+}
+
+# Main function to generate everything
+generate_hops_stack() {
+    local services=("$@")
+    
+    if [[ ${#services[@]} -eq 0 ]]; then
+        echo "Error: No services specified"
+        return 1
+    fi
+    
+    echo "Generating HOPS stack for: ${services[*]}"
+    
+    # Resolve dependencies
+    local all_services=($(resolve_dependencies "${services[@]}"))
+    
+    echo "Services with dependencies: ${all_services[*]}"
+    
+    # Print summary
+    print_service_summary "${all_services[@]}"
+    
+    # Generate docker-compose.yml
+    generate_complete_compose "${all_services[@]}"
+    
+    # Create service configurations
+    create_service_configs "${all_services[@]}"
+    
+    echo "HOPS stack generation complete!"
+}
+
+# Helper function to list all available services
+list_available_services() {
+    echo "Available HOPS services:"
+    echo
+    echo "📺 MEDIA MANAGEMENT:"
+    echo "  sonarr radarr lidarr readarr bazarr prowlarr tdarr"
+    echo
+    echo "⬇️  DOWNLOAD CLIENTS:"
+    echo "  qbittorrent transmission nzbget sabnzbd"
+    echo
+    echo "🎞️  MEDIA SERVERS:"
+    echo "  jellyfin plex emby jellystat"
+    echo
+    echo "🎛️  REQUEST MANAGEMENT:"
+    echo "  overseerr jellyseerr ombi"
+    echo
+    echo "🔒 PROXY & SECURITY:"
+    echo "  traefik nginx-proxy-manager authelia"
+    echo
+    echo "📈 MONITORING:"
+    echo "  portainer watchtower uptime-kuma"
+    echo
+    echo "🗄️  DATABASES:"
+    echo "  postgres redis"
+}
+
+# Usage information
+show_usage() {
+    cat <<EOF
+HOPS Service Definitions Script v3.1.0
+
+Usage:
+  source hops_service_definitions.sh
+  generate_hops_stack service1 service2 service3...
+
+Examples:
+  generate_hops_stack sonarr radarr jellyfin qbittorrent
+  generate_hops_stack plex overseerr traefik portainer
+  
+Functions:
+  generate_service_definition <service>  - Generate single service
+  generate_complete_compose <services>   - Generate docker-compose.yml
+  create_service_configs <services>      - Create config directories
+  list_available_services                - Show all available services
+  resolve_dependencies <services>        - Add required dependencies
+  get_service_ports <service>            - Get service port mappings
+  
+EOF
+}
