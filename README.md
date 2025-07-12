@@ -98,7 +98,7 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 
 ### 1. Download HOPS
 ```bash
-git clone https://github.com/yourusername/hops.git
+git clone https://github.com/skiercm/hops.git
 cd hops
 chmod +x hops.sh
 ```
@@ -308,7 +308,7 @@ We welcome contributions! Please:
 
 ### Development Setup
 ```bash
-git clone https://github.com/yourusername/hops.git
+git clone https://github.com/skiercm/hops.git
 cd hops
 # Make changes to scripts
 # Test with: sudo ./hops.sh
