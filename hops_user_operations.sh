@@ -1,0 +1,175 @@
+#!/bin/bash
+
+# HOPS User Script
+# This script handles operations that can run as regular user
+# Version: 3.1.0
+
+set -e
+
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/lib/docker.sh"
+source "$SCRIPT_DIR/lib/validation.sh"
+
+# Initialize logging
+setup_logging "user-operations"
+
+# Check if user is in docker group
+check_docker_access() {
+    if ! groups "$USER" | grep -q docker; then
+        error_exit "User not in docker group. Please run the privileged setup first and log out/in."
+    fi
+    
+    if ! docker info >/dev/null 2>&1; then
+        error_exit "Cannot access Docker daemon. Please ensure Docker is running."
+    fi
+}
+
+# Generate Docker Compose configuration
+generate_docker_compose() {
+    local services=("$@")
+    local compose_file="$HOME/homelab/docker-compose.yml"
+    
+    info "📝 Generating Docker Compose configuration..."
+    
+    # Create homelab directory
+    mkdir -p "$HOME/homelab"
+    
+    # Generate compose file header
+    cat > "$compose_file" << EOF
+version: '3.8'
+
+services:
+EOF
+    
+    # Generate service definitions
+    for service in "${services[@]}"; do
+        if "$SCRIPT_DIR/hops_service_definitions_improved.sh" generate "$service" >> "$compose_file"; then
+            success "Added service: $service"
+        else
+            error_exit "Failed to generate service definition for: $service"
+        fi
+    done
+    
+    # Add networks section
+    cat >> "$compose_file" << EOF
+
+networks:
+  homelab:
+    driver: bridge
+  traefik:
+    driver: bridge
+  database:
+    driver: bridge
+EOF
+    
+    success "Docker Compose configuration generated: $compose_file"
+}
+
+# Deploy services
+deploy_services() {
+    local compose_file="$HOME/homelab/docker-compose.yml"
+    
+    if [[ ! -f "$compose_file" ]]; then
+        error_exit "Docker Compose file not found: $compose_file"
+    fi
+    
+    info "🚀 Deploying services..."
+    
+    cd "$HOME/homelab"
+    
+    # Pull images
+    if docker compose pull; then
+        success "Docker images pulled successfully"
+    else
+        error_exit "Failed to pull Docker images"
+    fi
+    
+    # Start services
+    if docker compose up -d; then
+        success "Services deployed successfully"
+    else
+        error_exit "Failed to deploy services"
+    fi
+}
+
+# Stop services
+stop_services() {
+    local compose_file="$HOME/homelab/docker-compose.yml"
+    
+    if [[ ! -f "$compose_file" ]]; then
+        error_exit "Docker Compose file not found: $compose_file"
+    fi
+    
+    info "🛑 Stopping services..."
+    
+    cd "$HOME/homelab"
+    
+    if docker compose down; then
+        success "Services stopped successfully"
+    else
+        error_exit "Failed to stop services"
+    fi
+}
+
+# Show service status
+show_service_status() {
+    local compose_file="$HOME/homelab/docker-compose.yml"
+    
+    if [[ ! -f "$compose_file" ]]; then
+        error_exit "Docker Compose file not found: $compose_file"
+    fi
+    
+    info "📊 Service status:"
+    
+    cd "$HOME/homelab"
+    docker compose ps
+}
+
+# Main user operations
+main() {
+    local action="$1"
+    shift
+    
+    # Check Docker access
+    check_docker_access
+    
+    case "$action" in
+        "generate")
+            if [[ $# -eq 0 ]]; then
+                error_exit "Usage: $0 generate <service1> [service2] ..."
+            fi
+            generate_docker_compose "$@"
+            ;;
+        
+        "deploy")
+            deploy_services
+            ;;
+        
+        "stop")
+            stop_services
+            ;;
+        
+        "status")
+            show_service_status
+            ;;
+        
+        "logs")
+            if [[ $# -eq 0 ]]; then
+                error_exit "Usage: $0 logs <service_name>"
+            fi
+            cd "$HOME/homelab"
+            docker compose logs -f "$1"
+            ;;
+        
+        *)
+            error_exit "Unknown action: $action"
+            ;;
+    esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

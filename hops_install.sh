@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# HOPS Installation Wrapper
+# Orchestrates privileged and non-privileged installation steps
+# Version: 3.1.0
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
+# Initialize logging
+setup_logging "installation-wrapper"
+
+# Show header
+show_hops_header "3.1.0" "Installation Wrapper"
+
+# Check if we're running as root
+if [[ $EUID -eq 0 ]]; then
+    if [[ -z "$SUDO_USER" ]]; then
+        error_exit "Please run with sudo, not as root directly"
+    fi
+else
+    error_exit "This script must be run with sudo"
+fi
+
+# Phase 1: Privileged setup
+info "📋 Phase 1: Privileged setup (requires root)"
+if "$SCRIPT_DIR/hops_privileged_setup.sh"; then
+    success "Privileged setup completed"
+else
+    error_exit "Privileged setup failed"
+fi
+
+# Phase 2: User setup
+info "📋 Phase 2: User setup (running as $SUDO_USER)"
+
+# Drop privileges and run user setup
+sudo -u "$SUDO_USER" bash << 'USERSCRIPT'
+cd "$HOME"
+echo "Running as user: $(whoami)"
+
+# Interactive service selection
+echo "Select services to install:"
+echo "1) Media Server Stack (Jellyfin, Sonarr, Radarr, Prowlarr)"
+echo "2) Download Client Stack (qBittorrent, Transmission)"
+echo "3) Monitoring Stack (Portainer, Uptime Kuma)"
+echo "4) Custom selection"
+
+read -p "Enter your choice (1-4): " choice
+
+case "$choice" in
+    1)
+        services=("jellyfin" "sonarr" "radarr" "prowlarr")
+        ;;
+    2)
+        services=("qbittorrent" "transmission")
+        ;;
+    3)
+        services=("portainer" "uptime-kuma")
+        ;;
+    4)
+        echo "Available services:"
+        "$SCRIPT_DIR/hops_service_definitions_improved.sh" list
+        read -p "Enter service names (space-separated): " -a services
+        ;;
+    *)
+        echo "Invalid choice"
+        exit 1
+        ;;
+esac
+
+# Generate and deploy
+if "$SCRIPT_DIR/hops_user_operations.sh" generate "${services[@]}"; then
+    echo "Configuration generated successfully"
+    
+    if "$SCRIPT_DIR/hops_user_operations.sh" deploy; then
+        echo "Services deployed successfully"
+    else
+        echo "Deployment failed"
+        exit 1
+    fi
+else
+    echo "Configuration generation failed"
+    exit 1
+fi
+USERSCRIPT
+
+success "Installation completed successfully"
+success "Services are now running. Check status with: ./hops_user_operations.sh status"

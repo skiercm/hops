@@ -1,0 +1,572 @@
+#!/bin/bash
+
+# HOPS Service Definitions - Improved Version
+# Contains all Docker Compose service configurations with error handling and pinned versions
+# Version: 3.1.0
+
+# Exit on any error
+set -e
+
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
+    source "$SCRIPT_DIR/lib/common.sh"
+else
+    echo "ERROR: Common library not found. Please ensure lib/common.sh exists." >&2
+    exit 1
+fi
+
+if [[ -f "$SCRIPT_DIR/lib/security.sh" ]]; then
+    source "$SCRIPT_DIR/lib/security.sh"
+else
+    echo "ERROR: Security library not found. Please ensure lib/security.sh exists." >&2
+    exit 1
+fi
+
+# Service definitions with pinned versions (from docker.sh)
+declare -A SERVICE_IMAGES=(
+    # Media Management (*arr Stack)
+    ["sonarr"]="lscr.io/linuxserver/sonarr:4.0.10"
+    ["radarr"]="lscr.io/linuxserver/radarr:5.8.3"
+    ["lidarr"]="lscr.io/linuxserver/lidarr:2.5.3"
+    ["readarr"]="lscr.io/linuxserver/readarr:0.3.32-develop"
+    ["bazarr"]="lscr.io/linuxserver/bazarr:1.4.3"
+    ["prowlarr"]="lscr.io/linuxserver/prowlarr:1.24.3"
+    ["tdarr"]="ghcr.io/haveagitgat/tdarr:2.26.01"
+    
+    # Download Clients
+    ["qbittorrent"]="lscr.io/linuxserver/qbittorrent:4.6.7"
+    ["transmission"]="lscr.io/linuxserver/transmission:4.0.6"
+    ["nzbget"]="lscr.io/linuxserver/nzbget:24.3"
+    ["sabnzbd"]="lscr.io/linuxserver/sabnzbd:4.3.3"
+    
+    # Media Servers
+    ["jellyfin"]="lscr.io/linuxserver/jellyfin:10.9.11"
+    ["plex"]="lscr.io/linuxserver/plex:1.40.5"
+    ["emby"]="lscr.io/linuxserver/emby:4.8.8"
+    ["jellystat"]="cyfershepard/jellystat:1.1.0"
+    
+    # Request Management
+    ["overseerr"]="lscr.io/linuxserver/overseerr:1.33.2"
+    ["jellyseerr"]="fallenbagel/jellyseerr:1.9.2"
+    ["ombi"]="lscr.io/linuxserver/ombi:4.43.5"
+    
+    # Reverse Proxy & Security
+    ["traefik"]="traefik:v3.1.6"
+    ["nginx-proxy-manager"]="jc21/nginx-proxy-manager:2.11.3"
+    ["authelia"]="authelia/authelia:4.38.16"
+    
+    # Monitoring & Management
+    ["portainer"]="portainer/portainer-ce:2.21.4"
+    ["uptime-kuma"]="louislam/uptime-kuma:1.23.15"
+    ["watchtower"]="containrrr/watchtower:1.7.1"
+)
+
+# Service port mapping
+declare -A SERVICE_PORTS=(
+    ["sonarr"]="8989"
+    ["radarr"]="7878"
+    ["lidarr"]="8686"
+    ["readarr"]="8787"
+    ["bazarr"]="6767"
+    ["prowlarr"]="9696"
+    ["tdarr"]="8265"
+    ["qbittorrent"]="8082"
+    ["transmission"]="9091"
+    ["nzbget"]="6789"
+    ["sabnzbd"]="8080"
+    ["jellyfin"]="8096"
+    ["plex"]="32400"
+    ["emby"]="8096"
+    ["jellystat"]="3000"
+    ["overseerr"]="5055"
+    ["jellyseerr"]="5056"
+    ["ombi"]="3579"
+    ["traefik"]="8080"
+    ["nginx-proxy-manager"]="81"
+    ["authelia"]="9091"
+    ["portainer"]="9000"
+    ["uptime-kuma"]="3001"
+    ["watchtower"]="8080"
+)
+
+# Initialize logging
+setup_logging "service-definitions"
+
+# Validate service name
+validate_service_name_internal() {
+    local service_name="$1"
+    
+    if [[ -z "$service_name" ]]; then
+        error_exit "Service name is required"
+    fi
+    
+    if ! validate_service_name "$service_name"; then
+        error_exit "Invalid service name: $service_name"
+    fi
+    
+    if [[ -z "${SERVICE_IMAGES[$service_name]}" ]]; then
+        error_exit "Unknown service: $service_name"
+    fi
+}
+
+# Get service image with validation
+get_service_image() {
+    local service_name="$1"
+    validate_service_name_internal "$service_name"
+    echo "${SERVICE_IMAGES[$service_name]}"
+}
+
+# Get service port with validation
+get_service_port() {
+    local service_name="$1"
+    validate_service_name_internal "$service_name"
+    echo "${SERVICE_PORTS[$service_name]}"
+}
+
+# Common environment variables for LinuxServer containers
+get_linuxserver_env() {
+    cat <<EOF
+      - PUID=\${PUID:-1000}
+      - PGID=\${PGID:-1000}
+      - TZ=\${TZ:-UTC}
+      - UMASK=002
+EOF
+}
+
+# Common restart policy
+get_restart_policy() {
+    echo "    restart: unless-stopped"
+}
+
+# Common network configuration
+get_homelab_network() {
+    cat <<EOF
+    networks:
+      - homelab
+EOF
+}
+
+# Common healthcheck for web services
+get_web_healthcheck() {
+    local service_name="$1"
+    local path="${2:-/}"
+    
+    if [[ -z "$service_name" ]]; then
+        error_exit "Service name required for healthcheck"
+    fi
+    
+    local port=$(get_service_port "$service_name")
+    
+    cat <<EOF
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:$port$path || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+EOF
+}
+
+# Common volume configuration
+get_common_volumes() {
+    local service_name="$1"
+    
+    if [[ -z "$service_name" ]]; then
+        error_exit "Service name required for volumes"
+    fi
+    
+    cat <<EOF
+    volumes:
+      - \${CONFIG_ROOT:-/opt/appdata}/$service_name:/config
+      - \${DATA_ROOT:-/mnt/media}:/data
+      - /etc/localtime:/etc/localtime:ro
+EOF
+}
+
+# Common Traefik labels
+get_traefik_labels() {
+    local service_name="$1"
+    
+    if [[ -z "$service_name" ]]; then
+        error_exit "Service name required for Traefik labels"
+    fi
+    
+    local port=$(get_service_port "$service_name")
+    
+    cat <<EOF
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.$service_name.rule=Host(\`$service_name.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.$service_name.entrypoints=websecure"
+      - "traefik.http.routers.$service_name.tls.certresolver=letsencrypt"
+      - "traefik.http.services.$service_name.loadbalancer.server.port=$port"
+EOF
+}
+
+# --------------------------------------------
+# SERVICE GENERATORS
+# --------------------------------------------
+
+# Generate *arr service (template for Sonarr, Radarr, etc.)
+generate_arr_service() {
+    local service_name="$1"
+    
+    validate_service_name_internal "$service_name"
+    
+    local image=$(get_service_image "$service_name")
+    local port=$(get_service_port "$service_name")
+    
+    cat <<EOF
+  $service_name:
+    image: $image
+    container_name: $service_name
+$(get_restart_policy)
+    ports:
+      - "$port:$port"
+    environment:
+$(get_linuxserver_env)
+$(get_common_volumes "$service_name")
+$(get_web_healthcheck "$service_name")
+$(get_homelab_network)
+$(get_traefik_labels "$service_name")
+
+EOF
+}
+
+# Generate media server service
+generate_media_server() {
+    local service_name="$1"
+    
+    validate_service_name_internal "$service_name"
+    
+    local image=$(get_service_image "$service_name")
+    local port=$(get_service_port "$service_name")
+    
+    # Special handling for Plex
+    local additional_config=""
+    if [[ "$service_name" == "plex" ]]; then
+        additional_config="      - PLEX_CLAIM=\${PLEX_CLAIM:-}
+      - ADVERTISE_IP=\${ADVERTISE_IP:-}"
+    fi
+    
+    cat <<EOF
+  $service_name:
+    image: $image
+    container_name: $service_name
+$(get_restart_policy)
+    ports:
+      - "$port:$port"
+    environment:
+$(get_linuxserver_env)
+$additional_config
+$(get_common_volumes "$service_name")
+$(get_web_healthcheck "$service_name")
+$(get_homelab_network)
+$(get_traefik_labels "$service_name")
+
+EOF
+}
+
+# Generate download client service
+generate_download_client() {
+    local service_name="$1"
+    
+    validate_service_name_internal "$service_name"
+    
+    local image=$(get_service_image "$service_name")
+    local port=$(get_service_port "$service_name")
+    
+    # Special handling for qBittorrent
+    local additional_config=""
+    if [[ "$service_name" == "qbittorrent" ]]; then
+        additional_config="      - WEBUI_PORT=$port"
+    fi
+    
+    cat <<EOF
+  $service_name:
+    image: $image
+    container_name: $service_name
+$(get_restart_policy)
+    ports:
+      - "$port:$port"
+    environment:
+$(get_linuxserver_env)
+$additional_config
+$(get_common_volumes "$service_name")
+$(get_web_healthcheck "$service_name")
+$(get_homelab_network)
+$(get_traefik_labels "$service_name")
+
+EOF
+}
+
+# Generate monitoring service
+generate_monitoring_service() {
+    local service_name="$1"
+    
+    validate_service_name_internal "$service_name"
+    
+    local image=$(get_service_image "$service_name")
+    local port=$(get_service_port "$service_name")
+    
+    # Special handling for Portainer
+    local additional_config=""
+    local volume_config=""
+    
+    if [[ "$service_name" == "portainer" ]]; then
+        volume_config="    volumes:
+      - \${CONFIG_ROOT:-/opt/appdata}/$service_name:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro"
+    elif [[ "$service_name" == "watchtower" ]]; then
+        volume_config="    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro"
+        additional_config="      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *"
+    else
+        volume_config=$(get_common_volumes "$service_name")
+    fi
+    
+    cat <<EOF
+  $service_name:
+    image: $image
+    container_name: $service_name
+$(get_restart_policy)
+    ports:
+      - "$port:$port"
+    environment:
+$(get_linuxserver_env)
+$additional_config
+$volume_config
+$(get_web_healthcheck "$service_name")
+$(get_homelab_network)
+$(get_traefik_labels "$service_name")
+
+EOF
+}
+
+# Generate Traefik service
+generate_traefik() {
+    local service_name="traefik"
+    
+    validate_service_name_internal "$service_name"
+    
+    local image=$(get_service_image "$service_name")
+    local port=$(get_service_port "$service_name")
+    
+    cat <<EOF
+  traefik:
+    image: $image
+    container_name: traefik
+$(get_restart_policy)
+    ports:
+      - "80:80"
+      - "443:443"
+      - "$port:$port"
+    environment:
+      - CF_API_EMAIL=\${CF_API_EMAIL:-}
+      - CF_API_KEY=\${CF_API_KEY:-}
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=\${ACME_EMAIL:-admin@localhost}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    volumes:
+      - \${CONFIG_ROOT:-/opt/appdata}/traefik:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - homelab
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(\`traefik.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traefik.loadbalancer.server.port=$port"
+
+EOF
+}
+
+# Main service generator function
+generate_service_definition() {
+    local service_name="$1"
+    
+    if [[ -z "$service_name" ]]; then
+        error_exit "Service name is required"
+    fi
+    
+    validate_service_name_internal "$service_name"
+    
+    debug "Generating service definition for: $service_name"
+    
+    case "$service_name" in
+        # Media Management (*arr Stack)
+        "sonarr"|"radarr"|"lidarr"|"readarr"|"bazarr"|"prowlarr")
+            generate_arr_service "$service_name"
+            ;;
+        
+        # Download Clients
+        "qbittorrent"|"transmission"|"nzbget"|"sabnzbd")
+            generate_download_client "$service_name"
+            ;;
+        
+        # Media Servers
+        "jellyfin"|"plex"|"emby"|"jellystat")
+            generate_media_server "$service_name"
+            ;;
+        
+        # Request Management
+        "overseerr"|"jellyseerr"|"ombi")
+            generate_arr_service "$service_name"  # They use similar patterns
+            ;;
+        
+        # Reverse Proxy & Security
+        "traefik")
+            generate_traefik
+            ;;
+        
+        # Monitoring & Management
+        "portainer"|"uptime-kuma"|"watchtower")
+            generate_monitoring_service "$service_name"
+            ;;
+        
+        # Other services
+        "nginx-proxy-manager"|"authelia"|"tdarr")
+            generate_arr_service "$service_name"  # Use generic template
+            ;;
+        
+        *)
+            error_exit "Unknown service: $service_name"
+            ;;
+    esac
+}
+
+# Generate multiple services
+generate_multiple_services() {
+    local services=("$@")
+    
+    if [[ ${#services[@]} -eq 0 ]]; then
+        error_exit "No services specified"
+    fi
+    
+    debug "Generating definitions for ${#services[@]} services"
+    
+    for service in "${services[@]}"; do
+        generate_service_definition "$service"
+    done
+}
+
+# List all available services
+list_available_services() {
+    echo "Available services:"
+    echo
+    
+    local categories=(
+        "Media Management:sonarr,radarr,lidarr,readarr,bazarr,prowlarr,tdarr"
+        "Download Clients:qbittorrent,transmission,nzbget,sabnzbd"
+        "Media Servers:jellyfin,plex,emby,jellystat"
+        "Request Management:overseerr,jellyseerr,ombi"
+        "Reverse Proxy & Security:traefik,nginx-proxy-manager,authelia"
+        "Monitoring & Management:portainer,uptime-kuma,watchtower"
+    )
+    
+    for category in "${categories[@]}"; do
+        local category_name="${category%%:*}"
+        local services="${category#*:}"
+        
+        echo -e "${CYAN}${category_name}:${NC}"
+        IFS=',' read -ra service_list <<< "$services"
+        
+        for service in "${service_list[@]}"; do
+            local port=$(get_service_port "$service")
+            local image=$(get_service_image "$service")
+            printf "  %-20s Port: %-6s Image: %s\n" "$service" "$port" "$image"
+        done
+        echo
+    done
+}
+
+# Validate service configuration
+validate_service_config() {
+    local service_name="$1"
+    
+    validate_service_name_internal "$service_name"
+    
+    local image=$(get_service_image "$service_name")
+    local port=$(get_service_port "$service_name")
+    
+    # Check if image exists (basic validation)
+    if [[ -z "$image" ]]; then
+        error_exit "No image defined for service: $service_name"
+    fi
+    
+    # Check if port is valid
+    if [[ ! "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
+        error_exit "Invalid port for service $service_name: $port"
+    fi
+    
+    success "Service configuration valid: $service_name"
+}
+
+# Main function for command line usage
+main() {
+    local action="$1"
+    shift
+    
+    case "$action" in
+        "generate")
+            if [[ $# -eq 0 ]]; then
+                error_exit "Usage: $0 generate <service_name> [service_name...]"
+            fi
+            generate_multiple_services "$@"
+            ;;
+        
+        "list")
+            list_available_services
+            ;;
+        
+        "validate")
+            if [[ $# -eq 0 ]]; then
+                error_exit "Usage: $0 validate <service_name>"
+            fi
+            validate_service_config "$1"
+            ;;
+        
+        "help"|"--help"|"-h")
+            cat <<EOF
+HOPS Service Definitions - Improved Version
+
+Usage: $0 <action> [options]
+
+Actions:
+  generate <service>...  Generate service definitions
+  list                   List all available services
+  validate <service>     Validate service configuration
+  help                   Show this help message
+
+Examples:
+  $0 generate sonarr radarr jellyfin
+  $0 list
+  $0 validate traefik
+
+EOF
+            ;;
+        
+        *)
+            error_exit "Unknown action: $action. Use 'help' for usage information."
+            ;;
+    esac
+}
+
+# If script is run directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

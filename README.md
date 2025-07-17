@@ -6,6 +6,25 @@
 
 **HOPS** is a comprehensive, automated deployment solution for popular homelab applications. It simplifies the process of setting up and managing Docker-based services including media servers, download clients, monitoring tools, and more.
 
+## 🆕 What's New in v3.1.0
+
+### Major Security Enhancements
+- **🔐 Encrypted Secret Management**: All passwords and sensitive data now encrypted with AES-256
+- **🛡️ Input Validation**: Comprehensive validation preventing injection attacks
+- **⚡ Privilege Separation**: Root operations separated from user operations
+- **📌 Pinned Versions**: All container images use specific versions, not `latest`
+
+### New Architecture
+- **📚 Modular Libraries**: Shared code organized in `lib/` directory
+- **🔧 Enhanced Error Handling**: Better error messages and recovery mechanisms
+- **🎯 Improved Service Definitions**: Standardized service generation with validation
+- **📖 Documentation**: Complete `CLAUDE.md` for development guidance
+
+### Installation Methods
+- **🚀 New Secure Installer**: `sudo ./hops_install.sh` - Recommended method
+- **⚙️ Manual Installation**: Separate privileged and user operations
+- **🔄 Legacy Support**: Original `hops.sh` still fully supported
+
 ## 🎯 What is HOPS?
 
 HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a complete homelab infrastructure using Docker Compose. It provides an intuitive menu-driven interface for selecting, configuring, and managing services with enterprise-grade features like:
@@ -24,24 +43,30 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 - Automatic Docker installation and configuration
 - Interactive service selection
 - Intelligent dependency resolution
+- **NEW**: Privilege separation for enhanced security
 
 ### 🔒 **Security First**
 - Automatic firewall configuration
-- Secure password generation
+- Secure password generation with encryption
 - File permission hardening
 - Network isolation
+- **NEW**: AES-256 encrypted secret storage
+- **NEW**: Comprehensive input validation
+- **NEW**: Pinned container versions
 
 ### 📊 **Management & Monitoring**
 - Real-time service status monitoring
 - Centralized log viewing
 - Easy service management (start/stop/restart)
 - Health checks and service verification
+- **NEW**: Modular architecture with shared libraries
 
 ### 🔄 **Reliability**
 - Error handling with automatic rollback
 - Service dependency management
 - Port conflict detection
 - System requirements validation
+- **NEW**: Enhanced error handling with detailed context
 
 ## 📱 Supported Services
 
@@ -100,11 +125,20 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 ```bash
 git clone https://github.com/skiercm/hops.git
 cd hops
-chmod +x hops.sh
+chmod +x *.sh
 ```
 
-### 2. Run Installation
+### 2. Run Installation (New Improved Method)
 ```bash
+# Option 1: Use the new secure installation wrapper
+sudo ./hops_install.sh
+
+# Option 2: Manual two-phase installation
+sudo ./hops_privileged_setup.sh  # Run as root
+./hops_user_operations.sh generate <services>  # Run as user
+./hops_user_operations.sh deploy  # Run as user
+
+# Option 3: Legacy installation (still supported)
 sudo ./hops.sh
 ```
 
@@ -165,10 +199,17 @@ sudo ./hops.sh
 ## 🔧 Advanced Configuration
 
 ### Environment Variables
-All configuration is stored in `~/homelab/.env`:
+Configuration is now stored encrypted for enhanced security:
 
 ```bash
-# Core Configuration
+# NEW: Encrypted secret management
+./lib/secrets.sh init                    # Initialize secret management
+./lib/secrets.sh create                  # Create encrypted environment
+./lib/secrets.sh update DOMAIN example.com  # Update values
+./lib/secrets.sh get PUID               # Get values
+./lib/secrets.sh list                   # List all keys
+
+# Legacy: Plaintext configuration in ~/homelab/.env
 PUID=1000                     # User ID
 PGID=1000                     # Group ID
 TZ=America/New_York          # Timezone
@@ -177,7 +218,7 @@ TZ=America/New_York          # Timezone
 DATA_ROOT=/mnt/media         # Media storage
 CONFIG_ROOT=/opt/appdata     # App configurations
 
-# Security
+# Security (now auto-generated and encrypted)
 DEFAULT_ADMIN_PASSWORD=...   # Generated secure password
 DEFAULT_DB_PASSWORD=...      # Database password
 
@@ -188,23 +229,39 @@ ACME_EMAIL=admin@yourdomain.com
 
 ### Service Management Commands
 ```bash
-# Navigate to homelab directory
+# NEW: User operations script (runs without sudo)
+./hops_user_operations.sh status        # View service status
+./hops_user_operations.sh logs <service> # View service logs
+./hops_user_operations.sh deploy        # Deploy services
+./hops_user_operations.sh stop          # Stop all services
+
+# Legacy: Direct Docker Compose commands
 cd ~/homelab
+docker compose ps                       # View running services
+docker compose logs -f [service-name]  # View logs
+docker compose restart [service-name]  # Restart specific service
+docker compose pull && docker compose up -d  # Update all services
+docker compose down                     # Stop all services
+```
 
-# View running services
-docker compose ps
+### New Architecture
+HOPS v3.1.0 introduces a modular architecture with shared libraries:
 
-# View logs
-docker compose logs -f [service-name]
-
-# Restart specific service
-docker compose restart [service-name]
-
-# Update all services
-docker compose pull && docker compose up -d
-
-# Stop all services
-docker compose down
+```
+hops/
+├── lib/                    # NEW: Shared libraries
+│   ├── common.sh          # Logging, UI, utilities
+│   ├── system.sh          # System validation
+│   ├── docker.sh          # Docker operations
+│   ├── security.sh        # Security utilities
+│   ├── validation.sh      # Input validation
+│   ├── secrets.sh         # Secret management
+│   └── privileges.sh      # Privilege management
+├── hops_install.sh        # NEW: Installation wrapper
+├── hops_privileged_setup.sh  # NEW: Root-only operations
+├── hops_user_operations.sh   # NEW: User operations
+├── hops_service_definitions_improved.sh  # NEW: Enhanced service definitions
+└── hops.sh               # Legacy main script (still supported)
 ```
 
 ## 🔒 Security Features
@@ -215,12 +272,17 @@ docker compose down
 - **File Permissions**: Restrictive permissions on sensitive files
 - **Network Isolation**: Docker network segregation
 - **SSL/TLS**: Automatic certificate management with Traefik
+- **NEW**: AES-256 encrypted secret storage with master key management
+- **NEW**: Comprehensive input validation preventing injection attacks
+- **NEW**: Privilege separation (root vs user operations)
+- **NEW**: Pinned container versions preventing supply chain attacks
 
 ### Post-Installation Security
-1. **Change Default Passwords**: Update passwords in `.env` file
+1. **Manage Encrypted Secrets**: Use `./lib/secrets.sh` for secure password management
 2. **Configure Reverse Proxy**: Set up Traefik or Nginx Proxy Manager
 3. **Enable Authentication**: Configure Authelia for additional security
 4. **Regular Updates**: Use Watchtower for automatic updates
+5. **Security Auditing**: Use `./lib/security.sh` for security checks
 
 ## 🆘 Troubleshooting
 
@@ -310,8 +372,20 @@ We welcome contributions! Please:
 ```bash
 git clone https://github.com/skiercm/hops.git
 cd hops
-# Make changes to scripts
-# Test with: sudo ./hops.sh
+
+# Test syntax validation
+bash -n lib/*.sh
+bash -n *.sh
+
+# Test service definitions
+./hops_service_definitions_improved.sh list
+./hops_service_definitions_improved.sh generate jellyfin
+
+# Test new installation method
+sudo ./hops_install.sh
+
+# Test legacy method
+sudo ./hops.sh
 ```
 
 ## 📄 License
