@@ -6,6 +6,33 @@
 
 **HOPS** is a comprehensive, automated deployment solution for popular homelab applications. It simplifies the process of setting up and managing Docker-based services including media servers, download clients, monitoring tools, and more.
 
+## ⚠️ Important Notices
+
+### 🚧 Development Status
+**HOPS is under active development** and should be considered beta software. While core functionality is stable and tested, new features and improvements are being added regularly.
+
+### 🖥️ Platform Testing Status
+- **Linux (Ubuntu/Debian/Mint)**: ✅ Extensively tested and stable
+- **macOS**: ✅ Recently improved with comprehensive compatibility fixes
+- **Windows (WSL2)**: ⚠️ **Limited testing** - Basic functionality works but may have undiscovered issues
+
+### 💾 Data Safety & Backups
+**IMPORTANT**: Always maintain regular backups of your data before using HOPS.
+
+- **Backup your media and configuration files** before installation
+- **Test in a non-production environment** first if possible
+- **HOPS is not responsible for any data loss** that may occur during installation or operation
+- **Docker operations can be destructive** - ensure you understand what services you're installing
+
+### 📋 Recommended Backup Strategy
+```bash
+# Before running HOPS, backup important directories
+sudo tar -czf homelab-backup-$(date +%Y%m%d).tar.gz /path/to/your/media /path/to/your/configs
+
+# After installation, backup HOPS configuration
+sudo tar -czf hops-config-backup-$(date +%Y%m%d).tar.gz ~/hops ~/.config/hops
+```
+
 ## 🆕 What's New in v3.2.0
 
 ### Major macOS Compatibility Improvements
@@ -131,7 +158,7 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 - **OS**: 
   - **Linux**: Ubuntu 20.04+, Debian 11+, or Linux Mint 20+
   - **macOS**: 11.0+ (Big Sur) with Intel or Apple Silicon
-  - **Windows**: 10/11 with WSL2 (Ubuntu 20.04+ distribution)
+  - **Windows**: 10/11 with WSL2 (Ubuntu 20.04+ distribution) ⚠️ *Limited testing*
 - **RAM**: 2GB (4GB+ recommended)
 - **Storage**: 10GB free space (more for media)
 - **CPU**: 2 cores recommended
@@ -185,6 +212,7 @@ wsl --install Ubuntu-22.04
 - Ensure "Use WSL 2 based engine" is checked in Docker settings
 
 ### HOPS Installation on WSL2
+⚠️ **Note**: WSL2 support has limited testing. Please proceed with caution and ensure you have backups.
 
 **1. Open WSL2 Terminal:**
 ```bash
