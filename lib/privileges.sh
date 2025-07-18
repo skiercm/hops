@@ -581,7 +581,6 @@ EOF
     
     chmod +x "$user_script"
     success "User script created: $user_script"
-}
 
 # Create installation wrapper
 create_installation_wrapper() {
