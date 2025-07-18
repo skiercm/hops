@@ -15,6 +15,9 @@
 - **🚀 Docker Desktop Integration**: Improved Docker Desktop startup and management
 - **⚡ Better Error Handling**: Enhanced error messages and troubleshooting for macOS
 
+### New Features
+- **🌐 Caddy Support**: Added Caddy reverse proxy as a service option (configuration not included)
+
 ### Bug Fixes
 - **🔧 Fixed password generation**: Resolved `shuf` command and encoding issues on macOS
 - **🐳 Fixed container creation**: Resolved Docker Compose working directory issues
@@ -114,6 +117,7 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 ### 🔒 Reverse Proxy & Security
 - **Traefik** - Modern reverse proxy with automatic SSL
 - **Nginx Proxy Manager** - Easy-to-use reverse proxy
+- **Caddy** - Automatic HTTPS web server (*configuration not included*)
 - **Authelia** - Authentication and authorization server
 
 ### 📈 Monitoring & Management
@@ -321,6 +325,33 @@ DEFAULT_DB_PASSWORD=...      # Database password
 DOMAIN=yourdomain.com
 ACME_EMAIL=admin@yourdomain.com
 ```
+
+### Service-Specific Configuration
+
+#### Caddy Configuration
+**Important**: HOPS provides the Caddy container but **does not include Caddyfile configuration**. Users must provide their own Caddyfile.
+
+```bash
+# Create Caddy configuration directory
+mkdir -p ~/hops/config/caddy
+
+# Create your Caddyfile (example)
+cat > ~/hops/config/caddy/Caddyfile << 'EOF'
+# Example Caddyfile - customize as needed
+example.com {
+    reverse_proxy jellyfin:8096
+}
+
+api.example.com {
+    reverse_proxy overseerr:5055
+}
+EOF
+
+# Caddy will automatically handle HTTPS certificates
+# Documentation: https://caddyserver.com/docs/
+```
+
+**Configuration Scope**: HOPS installs and runs the Caddy container with proper volume mounts, but all routing, SSL, and proxy configuration is the user's responsibility.
 
 ### Service Management Commands
 ```bash

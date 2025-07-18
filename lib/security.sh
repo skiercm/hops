@@ -2,7 +2,7 @@
 
 # HOPS - Security Functions
 # Password generation, validation, and security utilities
-# Version: 3.1.0-beta
+# Version: 3.2.0
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
