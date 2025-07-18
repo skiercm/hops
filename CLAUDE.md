@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HOPS (Homelab Orchestration Provisioning Script) is a comprehensive automation tool for deploying homelab infrastructure using Docker Compose. It provides menu-driven installation, management, and monitoring of popular homelab services including media servers, download clients, monitoring tools, and more.
 
-**Cross-Platform Support**: HOPS now supports both Linux (Ubuntu/Debian/Mint) and macOS systems with intelligent platform detection and abstraction.
+**Cross-Platform Support**: HOPS now supports Linux (Ubuntu/Debian/Mint), macOS, and Windows (via WSL2) systems with intelligent platform detection and abstraction.
 
 ## Architecture
 
@@ -41,6 +41,9 @@ sudo ./install
 # Direct installation (macOS)
 sudo ./install
 
+# Direct installation (Windows WSL2)
+sudo ./install
+
 # Uninstallation
 sudo ./uninstall
 ```
@@ -58,6 +61,13 @@ sudo ./uninstall
 - 2GB+ RAM, 10GB+ disk space
 - Homebrew will be installed automatically if not present
 - Docker Desktop will be installed automatically via Homebrew
+
+**Windows (WSL2):**
+- Windows 10/11 with WSL2 enabled
+- Ubuntu 20.04+ distribution in WSL2
+- Docker Desktop with WSL2 backend
+- Admin access to install prerequisites
+- 2GB+ RAM, 10GB+ disk space
 
 ### Testing and Validation
 ```bash

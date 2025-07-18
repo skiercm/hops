@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/Version-3.1.0-blue.svg)]()
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-orange.svg)]()
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange.svg)]()
 
 **HOPS** is a comprehensive, automated deployment solution for popular homelab applications. It simplifies the process of setting up and managing Docker-based services including media servers, download clients, monitoring tools, and more.
 
@@ -19,7 +19,7 @@
 - **🔧 Enhanced Error Handling**: Better error messages and recovery mechanisms
 - **🎯 Improved Service Definitions**: Standardized service generation with validation
 - **📖 Documentation**: Complete `CLAUDE.md` for development guidance
-- **🍎 Cross-Platform Support**: Native support for both Linux and macOS with automatic dependency installation
+- **🍎 Cross-Platform Support**: Native support for Linux, macOS, and Windows (WSL2) with automatic dependency installation
 
 ### Installation Methods
 - **🚀 New Secure Installer**: `sudo ./setup` - Recommended method
@@ -114,6 +114,7 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 - **OS**: 
   - **Linux**: Ubuntu 20.04+, Debian 11+, or Linux Mint 20+
   - **macOS**: 11.0+ (Big Sur) with Intel or Apple Silicon
+  - **Windows**: 10/11 with WSL2 (Ubuntu 20.04+ distribution)
 - **RAM**: 2GB (4GB+ recommended)
 - **Storage**: 10GB free space (more for media)
 - **CPU**: 2 cores recommended
@@ -132,6 +133,73 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 - Internet connection
 - Homebrew will be installed automatically if not present
 - Docker Desktop will be installed automatically if not present
+
+**Windows:**
+- Windows 10 (build 19041+) or Windows 11
+- WSL2 enabled with Ubuntu 20.04+ distribution
+- Docker Desktop with WSL2 backend
+- Admin access to install prerequisites
+- x86_64 processor with virtualization support
+- Hyper-V and virtualization enabled in BIOS
+
+## 🪟 Windows Installation (WSL2)
+
+HOPS runs on Windows through WSL2 (Windows Subsystem for Linux) with excellent compatibility and performance. This approach leverages the full Linux environment within Windows.
+
+### Prerequisites Setup
+
+**1. Enable WSL2:**
+```powershell
+# Run in PowerShell as Administrator
+wsl --install
+# Restart computer when prompted
+```
+
+**2. Install Ubuntu Distribution:**
+```powershell
+# Install Ubuntu 22.04 LTS (recommended)
+wsl --install Ubuntu-22.04
+# Set up username and password when prompted
+```
+
+**3. Install Docker Desktop:**
+- Download from [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+- Enable WSL2 integration during installation
+- Ensure "Use WSL 2 based engine" is checked in Docker settings
+
+### HOPS Installation on WSL2
+
+**1. Open WSL2 Terminal:**
+```bash
+# Launch Ubuntu from Start Menu or run:
+wsl -d Ubuntu-22.04
+```
+
+**2. Install HOPS (same as Linux):**
+```bash
+# Clone inside WSL2 filesystem (important for performance)
+cd ~
+git clone https://github.com/skiercm/hops.git
+cd hops
+chmod +x hops install uninstall setup
+
+# Run installation
+sudo ./setup
+```
+
+### ⚠️ Important Notes for Windows Users
+
+**File Location:** Always run HOPS from the WSL2 filesystem (`~/hops/`) for optimal performance. Avoid running from `/mnt/c/` (Windows drives).
+
+**Media Access:** Your Windows media folders can be accessed at:
+- `C:\Users\YourName\` → `/mnt/c/Users/YourName/`
+- External drives → `/mnt/d/`, `/mnt/e/`, etc.
+
+**Docker Integration:** Services will be accessible from both Windows and WSL2:
+- Web interfaces work from Windows browsers
+- File shares accessible from Windows Explorer via `\\wsl.localhost\Ubuntu-22.04\home\username\hops\`
+
+**Performance:** WSL2 provides 95% of native Linux performance when files are stored in the WSL2 filesystem.
 
 ## 🚀 Quick Start
 
