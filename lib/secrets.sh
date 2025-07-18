@@ -2,7 +2,7 @@
 
 # HOPS - Secret Management System
 # Secure encryption and management of sensitive configuration data
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -190,7 +190,7 @@ create_encrypted_environment() {
     cat > "$temp_env_file" << EOF
 # HOPS Environment Configuration
 # Generated on: $(date)
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Core Configuration
 PUID=$puid

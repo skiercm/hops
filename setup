@@ -2,7 +2,7 @@
 
 # HOPS Installation Wrapper
 # Orchestrates privileged and non-privileged installation steps
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 set -e
 
@@ -13,7 +13,7 @@ source "$SCRIPT_DIR/lib/common.sh"
 setup_logging "installation-wrapper"
 
 # Show header
-show_hops_header "3.1.0" "Installation Wrapper"
+show_hops_header "3.1.0-beta" "Installation Wrapper"
 
 # Check if we're running as root
 if [[ $EUID -eq 0 ]]; then

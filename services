@@ -2,7 +2,7 @@
 
 # HOPS Service Definitions
 # Contains all Docker Compose service configurations
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # This script provides functions to generate Docker Compose service definitions
 # Usage: Source this script and call generate_service_definition <service_name>

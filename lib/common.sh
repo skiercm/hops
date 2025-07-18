@@ -2,7 +2,7 @@
 
 # HOPS - Common Utility Functions
 # Shared functions for logging, error handling, and UI
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Prevent multiple sourcing
 if [[ -n "${HOPS_COMMON_LOADED:-}" ]]; then

@@ -2,7 +2,7 @@
 
 # HOPS User Script
 # This script handles operations that can run as regular user
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 set -e
 

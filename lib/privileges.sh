@@ -2,7 +2,7 @@
 
 # HOPS - Privilege Management System
 # Split operations into privileged and non-privileged components
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -158,7 +158,7 @@ create_privileged_setup() {
 
 # HOPS Privileged Setup Script
 # This script handles operations that require root privileges
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 set -e
 
@@ -406,7 +406,7 @@ create_user_script() {
 
 # HOPS User Script
 # This script handles operations that can run as regular user
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 set -e
 
@@ -591,7 +591,7 @@ create_installation_wrapper() {
 
 # HOPS Installation Wrapper
 # Orchestrates privileged and non-privileged installation steps
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 set -e
 

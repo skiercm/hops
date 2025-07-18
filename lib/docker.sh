@@ -2,7 +2,7 @@
 
 # HOPS - Docker Service Management
 # Functions for Docker service management and monitoring
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

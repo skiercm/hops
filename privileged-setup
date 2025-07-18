@@ -2,7 +2,7 @@
 
 # HOPS Privileged Setup Script
 # This script handles operations that require root privileges
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 set -e
 

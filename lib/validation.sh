@@ -2,7 +2,7 @@
 
 # HOPS - Input Validation and Sanitization Functions
 # Comprehensive input validation and sanitization utilities
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

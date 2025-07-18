@@ -8,7 +8,7 @@ uninstall_hops() {
     set +e
 
     # Script version for consistency
-    local SCRIPT_VERSION="3.1.0"
+    local SCRIPT_VERSION="3.1.0-beta"
 
     # --------------------------------------------
     # LOGGING SETUP

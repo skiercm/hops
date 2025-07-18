@@ -2,7 +2,7 @@
 
 # HOPS - System Validation Functions
 # Functions for system checks, OS detection, and requirements validation
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Source common functions
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

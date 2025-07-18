@@ -2,7 +2,7 @@
 
 # HOPS Service Definitions - Improved Version
 # Contains all Docker Compose service configurations with error handling and pinned versions
-# Version: 3.1.0
+# Version: 3.1.0-beta
 
 # Exit on any error
 set -e

@@ -1,12 +1,12 @@
 # HOPS - Homelab Orchestration Provisioning Script
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-3.1.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-3.1.0--beta-blue.svg)]()
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange.svg)]()
 
 **HOPS** is a comprehensive, automated deployment solution for popular homelab applications. It simplifies the process of setting up and managing Docker-based services including media servers, download clients, monitoring tools, and more.
 
-## 🆕 What's New in v3.1.0
+## 🆕 What's New in v3.1.0-beta
 
 ### Major Security Enhancements
 - **🔐 Encrypted Secret Management**: All passwords and sensitive data now encrypted with AES-256
@@ -327,7 +327,7 @@ docker compose down                     # Stop all services
 ```
 
 ### New Architecture
-HOPS v3.1.0 introduces a modular architecture with shared libraries:
+HOPS v3.1.0-beta introduces a modular architecture with shared libraries:
 
 ```
 hops/
