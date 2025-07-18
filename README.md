@@ -484,9 +484,65 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
+### HOPS Support
 - **Documentation**: Check this README and built-in help
-- **Issues**: Report bugs via GitHub Issues
-- **Community**: Join discussions in GitHub Discussions
+- **Issues**: Report HOPS bugs via [GitHub Issues](https://github.com/skiercm/hops/issues)
+- **Community**: Join discussions in [GitHub Discussions](https://github.com/skiercm/hops/discussions)
+
+### Service-Specific Support
+
+**⚠️ Important**: If you encounter issues with a specific service (configuration, features, bugs), please reach out to the respective service developers directly using the links below. HOPS only handles deployment automation - the individual services are maintained by their respective teams.
+
+#### 📺 Media Management (*arr Stack)
+- **Sonarr**: [github.com/Sonarr/Sonarr](https://github.com/Sonarr/Sonarr) - TV series management
+- **Radarr**: [github.com/Radarr/Radarr](https://github.com/Radarr/Radarr) - Movie collection manager
+- **Lidarr**: [github.com/Lidarr/Lidarr](https://github.com/Lidarr/Lidarr) - Music collection manager
+- **Readarr**: [github.com/Readarr/Readarr](https://github.com/Readarr/Readarr) - E-book manager ⚠️ *Project retired*
+- **Bazarr**: [github.com/morpheus65535/bazarr](https://github.com/morpheus65535/bazarr) - Subtitle management
+- **Prowlarr**: [github.com/Prowlarr/Prowlarr](https://github.com/Prowlarr/Prowlarr) - Indexer manager
+- **Tdarr**: [github.com/HaveAGitGat/Tdarr](https://github.com/HaveAGitGat/Tdarr) - Media transcoding
+- **Huntarr**: [github.com/plexguide/Huntarr.io](https://github.com/plexguide/Huntarr.io) - Missing media discovery
+
+#### ⬇️ Download Clients
+- **qBittorrent**: [github.com/qbittorrent/qBittorrent](https://github.com/qbittorrent/qBittorrent) - BitTorrent client
+- **Transmission**: [github.com/transmission/transmission](https://github.com/transmission/transmission) - BitTorrent client
+- **NZBGet**: [github.com/nzbget/nzbget](https://github.com/nzbget/nzbget) - Usenet downloader
+- **SABnzbd**: [github.com/sabnzbd/sabnzbd](https://github.com/sabnzbd/sabnzbd) - Usenet downloader
+
+#### 🎞️ Media Servers
+- **Jellyfin**: [github.com/jellyfin/jellyfin](https://github.com/jellyfin/jellyfin) - Free media server
+- **Plex**: [github.com/plexinc/pms-docker](https://github.com/plexinc/pms-docker) - Docker container repo
+- **Emby**: [github.com/MediaBrowser/Emby](https://github.com/MediaBrowser/Emby) - Personal media server
+
+#### 🎛️ Request Management
+- **Overseerr**: [github.com/sct/overseerr](https://github.com/sct/overseerr) - Media requests for Plex
+- **Jellyseerr**: [github.com/fallenbagel/jellyseerr](https://github.com/fallenbagel/jellyseerr) - Media requests for Jellyfin/Emby/Plex
+- **Ombi**: [github.com/Ombi-app/Ombi](https://github.com/Ombi-app/Ombi) - Media request platform
+- **Jellystat**: [github.com/CyferShepard/Jellystat](https://github.com/CyferShepard/Jellystat) - Jellyfin statistics
+
+#### 🔒 Network & Security
+- **Traefik**: [github.com/traefik/traefik](https://github.com/traefik/traefik) - Modern reverse proxy
+- **Nginx Proxy Manager**: [github.com/NginxProxyManager/nginx-proxy-manager](https://github.com/NginxProxyManager/nginx-proxy-manager) - Nginx proxy management
+- **Authelia**: [github.com/authelia/authelia](https://github.com/authelia/authelia) - Authentication & SSO
+
+#### 📈 Monitoring & Management
+- **Portainer**: [github.com/portainer/portainer](https://github.com/portainer/portainer) - Container management
+- **Watchtower**: [github.com/containrrr/watchtower](https://github.com/containrrr/watchtower) - Automatic updates
+- **Uptime Kuma**: [github.com/louislam/uptime-kuma](https://github.com/louislam/uptime-kuma) - Uptime monitoring
+
+### When to Contact HOPS vs Service Developers
+
+**Contact HOPS** for:
+- Installation/deployment issues
+- Docker Compose generation problems  
+- Cross-platform compatibility issues
+- Script errors or automation failures
+
+**Contact Service Developers** for:
+- Service configuration help
+- Feature requests for individual services
+- Bugs within the service itself
+- Service-specific documentation
 
 ---
 
