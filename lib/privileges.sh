@@ -442,8 +442,6 @@ generate_docker_compose() {
     
     # Generate compose file header
     cat > "$compose_file" << EOF
-version: '3.8'
-
 services:
 EOF
     

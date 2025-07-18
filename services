@@ -67,8 +67,8 @@ get_web_healthcheck() {
       test: ["CMD-SHELL", "curl -f http://localhost:$port$path || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
 EOF
 }
 
@@ -612,7 +612,12 @@ $(get_restart_policy)
     volumes:
       - \${CONFIG_ROOT}/jellyseerr:/app/config
 $(get_timezone_mount)
-$(get_web_healthcheck 5055)
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5055/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
 $(get_homelab_network)
     labels:
       - "traefik.enable=true"
@@ -944,8 +949,6 @@ generate_complete_compose() {
     
     # Start with the base compose structure
     cat > "$compose_file" <<EOF
-version: '3.8'
-
 networks:
   homelab:
     driver: bridge

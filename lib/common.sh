@@ -2,7 +2,7 @@
 
 # HOPS - Common Utility Functions
 # Shared functions for logging, error handling, and UI
-# Version: 3.1.0-beta
+# Version: 3.2.0
 
 # Prevent multiple sourcing
 if [[ -n "${HOPS_COMMON_LOADED:-}" ]]; then
@@ -101,7 +101,7 @@ show_hops_header() {
     local subtitle="$2"
     
     if [[ -z "$version" ]]; then
-        version="3.1.0"
+        version="3.2.0"
     fi
     
     clear
@@ -266,4 +266,42 @@ get_available_port() {
     done
     
     echo "$port"
+}
+
+# Cross-platform shuffle function (alternative to shuf)
+shuffle_string() {
+    local input_string="$1"
+    local chars=()
+    local i
+    
+    # Convert string to array of characters
+    for (( i=0; i<${#input_string}; i++ )); do
+        chars+=("${input_string:$i:1}")
+    done
+    
+    # Fisher-Yates shuffle algorithm
+    for (( i=${#chars[@]}-1; i>0; i-- )); do
+        local j=$((RANDOM % (i+1)))
+        local temp="${chars[i]}"
+        chars[i]="${chars[j]}"
+        chars[j]="$temp"
+    done
+    
+    # Convert back to string
+    printf '%s' "${chars[@]}"
+}
+
+# Cross-platform character generation (alternative to tr with better encoding)
+generate_chars() {
+    local char_set="$1"
+    local count="$2"
+    local result=""
+    local i
+    
+    for (( i=0; i<count; i++ )); do
+        local char_index=$((RANDOM % ${#char_set}))
+        result+="${char_set:$char_index:1}"
+    done
+    
+    echo "$result"
 }

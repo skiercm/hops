@@ -379,15 +379,36 @@ run_system_checks() {
 # Get platform-specific default paths
 get_default_media_path() {
     if [[ "$OS_NAME_LOWER" == "macos" ]]; then
-        echo "/Users/$USER/hops/media"
+        # Use actual user, not root when running via sudo
+        local actual_user
+        if [[ -n "$SUDO_USER" ]]; then
+            actual_user="$SUDO_USER"
+        else
+            actual_user="$USER"
+        fi
+        echo "/Users/$actual_user/hops/media"
     else
-        echo "/mnt/media"
+        # Use actual user, not root when running via sudo
+        local actual_user
+        if [[ -n "$SUDO_USER" ]]; then
+            actual_user="$SUDO_USER"
+        else
+            actual_user="$USER"
+        fi
+        echo "/home/$actual_user/hops/media"
     fi
 }
 
 get_default_config_path() {
     if [[ "$OS_NAME_LOWER" == "macos" ]]; then
-        echo "/Users/$USER/hops/config"
+        # Use actual user, not root when running via sudo
+        local actual_user
+        if [[ -n "$SUDO_USER" ]]; then
+            actual_user="$SUDO_USER"
+        else
+            actual_user="$USER"
+        fi
+        echo "/Users/$actual_user/hops/config"
     else
         echo "/opt/appdata"
     fi
@@ -395,9 +416,23 @@ get_default_config_path() {
 
 get_default_homelab_path() {
     if [[ "$OS_NAME_LOWER" == "macos" ]]; then
-        echo "/Users/$USER/hops"
+        # Use actual user, not root when running via sudo
+        local actual_user
+        if [[ -n "$SUDO_USER" ]]; then
+            actual_user="$SUDO_USER"
+        else
+            actual_user="$USER"
+        fi
+        echo "/Users/$actual_user/hops"
     else
-        echo "/home/$USER/hops"
+        # Use actual user, not root when running via sudo
+        local actual_user
+        if [[ -n "$SUDO_USER" ]]; then
+            actual_user="$SUDO_USER"
+        else
+            actual_user="$USER"
+        fi
+        echo "/home/$actual_user/hops"
     fi
 }
 
@@ -872,35 +907,127 @@ install_docker() {
                 actual_user="$(whoami)"
             fi
             
-            # Remove conflicting compose-bridge binary if it exists
-            if [[ -f "/usr/local/bin/compose-bridge" ]]; then
-                info "🗑️ Removing conflicting compose-bridge binary..."
-                rm -f "/usr/local/bin/compose-bridge" 2>/dev/null || true
+            # Check for and handle conflicting files
+            local conflicting_files=()
+            local potential_conflicts=(
+                "/usr/local/bin/compose-bridge"
+                "/usr/local/bin/docker"
+                "/usr/local/bin/docker-compose"
+                "/usr/local/bin/docker-credential-desktop"
+                "/usr/local/bin/docker-credential-osxkeychain"
+                "/usr/local/bin/hub-tool"
+                "/usr/local/bin/kubectl"
+                "/Applications/Docker.app"
+                "/usr/local/Caskroom/docker"
+                "/usr/local/Caskroom/docker-desktop"
+                "/opt/homebrew/Caskroom/docker"
+                "/opt/homebrew/Caskroom/docker-desktop"
+            )
+            
+            for file in "${potential_conflicts[@]}"; do
+                if [[ -e "$file" ]]; then
+                    conflicting_files+=("$file")
+                fi
+            done
+            
+            if [[ ${#conflicting_files[@]} -gt 0 ]]; then
+                warning "⚠️  Conflicting Docker files detected:"
+                for file in "${conflicting_files[@]}"; do
+                    info "  - $file"
+                done
+                echo
+                
+                read -p "❓ Do you want to remove these conflicting files before installing Docker? (y/N): " -n 1 -r
+                echo
+                
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    for file in "${conflicting_files[@]}"; do
+                        info "🗑️ Removing conflicting file: $file"
+                        if [[ -d "$file" ]]; then
+                            rm -rf "$file" 2>/dev/null || {
+                                warning "Failed to remove $file - you may need to remove it manually"
+                            }
+                        else
+                            rm -f "$file" 2>/dev/null || {
+                                warning "Failed to remove $file - you may need to remove it manually"
+                            }
+                        fi
+                    done
+                    success "Conflicting files removed"
+                else
+                    warning "Keeping existing files. Installation may fail due to conflicts."
+                fi
             fi
             
-            sudo -u "$actual_user" brew install --cask docker
+            # Install Docker Desktop with force flag to overwrite existing files
+            info "📦 Installing Docker Desktop via Homebrew..."
+            sudo -u "$actual_user" brew install --cask docker --force
             
-            # Start Docker Desktop
+            # Start Docker Desktop with user interaction guidance
             info "🚀 Starting Docker Desktop..."
-            open -a Docker
+            open -a "Docker Desktop"
+            
+            echo
+            warning "📋 IMPORTANT: Docker Desktop First-Time Setup Required"
+            warning "=============================================="
+            info "Docker Desktop will now open and may require user interaction:"
+            info "  1. ✅ Click 'Open' if macOS asks to confirm opening Docker Desktop"
+            info "  2. ✅ Accept the Docker Desktop license agreement"
+            info "  3. ✅ Complete the Docker Desktop onboarding/tutorial"
+            info "  4. ✅ Sign in to Docker Hub (optional, can skip)"
+            info "  5. ✅ Configure Docker settings if prompted"
+            info "  6. ⚠️  Do NOT close Docker Desktop during setup"
+            echo
+            warning "The installation will wait for you to complete these steps..."
+            echo
+            
+            # Wait for user to complete setup
+            read -p "❓ Press ENTER after you've completed the Docker Desktop setup and it's running..."
+            echo
             
             # Wait for Docker to start
-            info "⏳ Waiting for Docker Desktop to start (this may take a few minutes)..."
-            local max_wait=120
+            info "⏳ Verifying Docker Desktop is running..."
+            local max_wait=60
             local wait_time=0
+            local docker_started=false
             
-            while ! docker info >/dev/null 2>&1; do
-                if [[ $wait_time -ge $max_wait ]]; then
-                    error_exit "Docker Desktop failed to start within $max_wait seconds. Please start it manually and try again."
+            while [[ $wait_time -lt $max_wait ]]; do
+                # Try to connect to Docker daemon
+                if docker info >/dev/null 2>&1; then
+                    docker_started=true
+                    break
                 fi
                 
-                sleep 5
-                ((wait_time += 5))
+                sleep 2
+                ((wait_time += 2))
                 echo -n "."
             done
             
             echo
-            success "Docker Desktop installed and started successfully"
+            
+            if [[ "$docker_started" == true ]]; then
+                success "✅ Docker Desktop is running and ready!"
+            else
+                warning "❌ Docker Desktop doesn't appear to be running."
+                warning "Please ensure Docker Desktop is:"
+                info "  1. Completely started (not just the app, but the Docker engine)"
+                info "  2. Shows 'Docker Desktop is running' in the menu bar"
+                info "  3. The whale icon in the menu bar is solid (not animated)"
+                echo
+                
+                read -p "❓ Try verification again? (y/N): " -n 1 -r
+                echo
+                
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    if docker info >/dev/null 2>&1; then
+                        success "✅ Docker Desktop is now running!"
+                    else
+                        error_exit "Docker Desktop still not responding. Please resolve the issue and re-run HOPS installation."
+                    fi
+                else
+                    error_exit "Installation cancelled. Please ensure Docker Desktop is running and try again."
+                fi
+            fi
             ;;
         "ubuntu"|"debian"|"linuxmint"|"mint")
             # Check for existing Docker installation
@@ -943,6 +1070,52 @@ install_docker() {
                     
                     success "Existing Docker installation is compatible"
                     return 0
+                fi
+            fi
+            
+            # Check for and handle conflicting files
+            local conflicting_files=()
+            local potential_conflicts=(
+                "/usr/bin/docker"
+                "/usr/bin/docker-compose"
+                "/usr/local/bin/docker"
+                "/usr/local/bin/docker-compose"
+                "/etc/docker"
+                "/var/lib/docker"
+            )
+            
+            for file in "${potential_conflicts[@]}"; do
+                if [[ -e "$file" ]]; then
+                    conflicting_files+=("$file")
+                fi
+            done
+            
+            if [[ ${#conflicting_files[@]} -gt 0 ]]; then
+                warning "⚠️  Conflicting Docker files detected:"
+                for file in "${conflicting_files[@]}"; do
+                    info "  - $file"
+                done
+                echo
+                
+                read -p "❓ Do you want to remove these conflicting files before installing Docker? (y/N): " -n 1 -r
+                echo
+                
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    for file in "${conflicting_files[@]}"; do
+                        info "🗑️ Removing conflicting file: $file"
+                        if [[ -d "$file" ]]; then
+                            rm -rf "$file" 2>/dev/null || {
+                                warning "Failed to remove $file - you may need to remove it manually"
+                            }
+                        else
+                            rm -f "$file" 2>/dev/null || {
+                                warning "Failed to remove $file - you may need to remove it manually"
+                            }
+                        fi
+                    done
+                    success "Conflicting files removed"
+                else
+                    warning "Keeping existing files. Installation may fail due to conflicts."
                 fi
             fi
             

@@ -197,8 +197,9 @@ EOF
         mkdir -p "$MEDIA_DIR"/{movies,tv,music,books,downloads}
         mkdir -p "$APPDATA_DIR"
         
-        # Set ownership if not root
-        if [[ "$RUNNING_USER" != "root" ]]; then
+        # Set ownership to actual user (not root)
+        if [[ -n "$SUDO_USER" ]]; then
+            log "📁 Setting ownership of directories to $SUDO_USER ($PUID:$PGID)"
             chown -R "$PUID:$PGID" "$MEDIA_DIR" "$APPDATA_DIR" 2>/dev/null || true
         fi
         
@@ -336,17 +337,17 @@ EOF
         done
         
         # Fallback: construct a guaranteed compliant password
-        local upper=$(tr -dc 'A-Z' < /dev/urandom | head -c2)
-        local lower=$(tr -dc 'a-z' < /dev/urandom | head -c4)
-        local digits=$(tr -dc '0-9' < /dev/urandom | head -c2)
-        local symbols=$(tr -dc '!@#$%^&*' < /dev/urandom | head -c2)
+        local upper=$(generate_chars 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 2)
+        local lower=$(generate_chars 'abcdefghijklmnopqrstuvwxyz' 4)
+        local digits=$(generate_chars '0123456789' 2)
+        local symbols=$(generate_chars '!@#$%^&*' 2)
         local remaining_length=$((length - 10))
         
         if [[ $remaining_length -gt 0 ]]; then
-            local remaining=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c$remaining_length)
-            echo "${upper}${lower}${digits}${symbols}${remaining}" | fold -w1 | shuf | tr -d '\n'
+            local remaining=$(generate_chars 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' $remaining_length)
+            shuffle_string "${upper}${lower}${digits}${symbols}${remaining}"
         else
-            echo "${upper}${lower}${digits}${symbols}"
+            shuffle_string "${upper}${lower}${digits}${symbols}"
         fi
     }
 
@@ -591,8 +592,22 @@ EOF
     # DOCKER COMPOSE FILE GENERATION
     # --------------------------------------------
     generate_docker_compose() {
-        local HOMELAB_DIR="$HOME/hops"
+        # Use actual user's home directory, not root's
+        local actual_user_home
+        if [[ -n "$SUDO_USER" ]]; then
+            actual_user_home=$(eval echo "~$SUDO_USER")
+        else
+            actual_user_home="$HOME"
+        fi
+        
+        local HOMELAB_DIR="$actual_user_home/hops"
         mkdir -p "$HOMELAB_DIR"
+        
+        # Set ownership to actual user
+        if [[ -n "$SUDO_USER" ]]; then
+            chown -R "$PUID:$PGID" "$HOMELAB_DIR" 2>/dev/null || true
+        fi
+        
         cd "$HOMELAB_DIR"
 
         if [[ -f docker-compose.yml ]]; then
@@ -649,6 +664,15 @@ EOF
     deploy_services() {
         log "🚀 Starting deployment..."
 
+        # Ensure we're in the correct directory
+        local HOMELAB_DIR="$HOME/hops"
+        if [[ ! -d "$HOMELAB_DIR" ]]; then
+            error_exit_with_rollback "Homelab directory not found: $HOMELAB_DIR"
+        fi
+        
+        cd "$HOMELAB_DIR"
+        log "📁 Working in directory: $(pwd)"
+
         # Set up error trap
         trap 'error_exit_with_rollback "Deployment failed at step: ${BASH_COMMAND}"' ERR
 
@@ -670,11 +694,40 @@ EOF
         done
         track_step "directories_created"
 
+        # Handle macOS keychain access for Docker authentication
+        if [[ "$OS_NAME_LOWER" == "macos" ]]; then
+            local actual_user
+            if [[ -n "$SUDO_USER" ]]; then
+                actual_user="$SUDO_USER"
+            else
+                actual_user="$(whoami)"
+            fi
+            
+            log "🔐 Preparing Docker authentication for macOS..."
+            
+            # Try to unlock keychain if needed
+            if ! sudo -u "$actual_user" security -v unlock-keychain ~/Library/Keychains/login.keychain-db 2>/dev/null; then
+                log "⚠️ Could not unlock keychain automatically"
+                log "💡 If you have private Docker images, you may need to manually unlock keychain"
+                log "💡 Run: security -v unlock-keychain ~/Library/Keychains/login.keychain-db"
+            else
+                log "✅ Keychain unlocked successfully"
+            fi
+        fi
+
         # Pull images with retry logic
         log "📥 Pulling container images..."
         local PULL_RETRIES=3
         for attempt in $(seq 1 $PULL_RETRIES); do
-            if docker compose pull 2>&1 | tee -a "$LOG_FILE"; then
+            local pull_cmd
+            if [[ "$OS_NAME_LOWER" == "macos" && -n "$SUDO_USER" ]]; then
+                # Run as the actual user to access keychain
+                pull_cmd="sudo -u $SUDO_USER docker compose pull"
+            else
+                pull_cmd="docker compose pull"
+            fi
+            
+            if $pull_cmd 2>&1 | tee -a "$LOG_FILE"; then
                 track_step "images_pulled"
                 break
             elif [[ $attempt -eq $PULL_RETRIES ]]; then
@@ -687,11 +740,62 @@ EOF
 
         # Start containers
         log "🔄 Starting containers..."
-        if docker compose up -d 2>&1 | tee -a "$LOG_FILE"; then
-            track_step "containers_started"
+        log "📄 Using docker-compose.yml in directory: $(pwd)"
+        log "🔧 Docker Compose configuration preview:"
+        docker compose config --quiet 2>/dev/null || log "⚠️ Could not preview configuration"
+        
+        # Run docker compose up as the actual user on macOS to access keychain
+        local up_cmd
+        if [[ "$OS_NAME_LOWER" == "macos" && -n "$SUDO_USER" ]]; then
+            up_cmd="sudo -u $SUDO_USER docker compose up -d"
         else
-            log "❌ Some containers failed to start. Checking status..."
-            docker compose ps
+            up_cmd="docker compose up -d"
+        fi
+        
+        if $up_cmd 2>&1 | tee -a "$LOG_FILE"; then
+            track_step "containers_started"
+            log "✅ Container startup command completed successfully"
+            
+            # Wait a moment for containers to initialize
+            sleep 5
+            
+            # Check container status
+            log "🔍 Checking container status..."
+            
+            # Use consistent command execution
+            local status_cmd logs_cmd
+            if [[ "$OS_NAME_LOWER" == "macos" && -n "$SUDO_USER" ]]; then
+                status_cmd="sudo -u $SUDO_USER docker compose ps"
+                logs_cmd="sudo -u $SUDO_USER docker compose logs"
+            else
+                status_cmd="docker compose ps"
+                logs_cmd="docker compose logs"
+            fi
+            
+            $status_cmd --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" | tee -a "$LOG_FILE"
+            
+            # Count running containers
+            local running_containers=$($status_cmd --filter "status=running" --format "{{.Names}}" | wc -l)
+            local total_containers=$($status_cmd --format "{{.Names}}" | wc -l)
+            
+            log "📊 Container Status: $running_containers/$total_containers containers running"
+            
+            if [[ $running_containers -eq 0 ]]; then
+                log "⚠️ No containers are running. Checking for errors..."
+                $logs_cmd --tail=20 | tee -a "$LOG_FILE"
+                warning "Containers were started but none are currently running. Check logs above."
+            elif [[ $running_containers -lt $total_containers ]]; then
+                log "⚠️ Some containers are not running. Checking logs..."
+                $logs_cmd --tail=20 | tee -a "$LOG_FILE"
+                warning "Not all containers are running. Check logs above."
+            else
+                log "✅ All containers are running successfully"
+            fi
+        else
+            log "❌ Container startup failed. Checking status..."
+            $status_cmd --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" | tee -a "$LOG_FILE"
+            log "📋 Recent container logs:"
+            $logs_cmd --tail=50 | tee -a "$LOG_FILE"
             error_exit_with_rollback "Container startup failed"
         fi
 

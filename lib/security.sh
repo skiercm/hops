@@ -75,23 +75,23 @@ generate_secure_password() {
     # Fallback: construct guaranteed compliant password
     debug "Using fallback password generation method"
     
-    local upper=$(tr -dc 'A-Z' < /dev/urandom | head -c2)
-    local lower=$(tr -dc 'a-z' < /dev/urandom | head -c4)
-    local digits=$(tr -dc '0-9' < /dev/urandom | head -c2)
-    local symbols=$(tr -dc '!@#$%^&*' < /dev/urandom | head -c2)
+    local upper=$(generate_chars 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 2)
+    local lower=$(generate_chars 'abcdefghijklmnopqrstuvwxyz' 4)
+    local digits=$(generate_chars '0123456789' 2)
+    local symbols=$(generate_chars '!@#$%^&*' 2)
     local remaining_length=$((length - 10))
     
     local password=""
     
     if [[ $remaining_length -gt 0 ]]; then
-        local remaining=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c$remaining_length)
+        local remaining=$(generate_chars 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' $remaining_length)
         password="${upper}${lower}${digits}${symbols}${remaining}"
     else
         password="${upper}${lower}${digits}${symbols}"
     fi
     
     # Shuffle the password
-    password=$(echo "$password" | fold -w1 | shuf | tr -d '\n')
+    password=$(shuffle_string "$password")
     
     echo "$password"
 }

@@ -1,14 +1,27 @@
 # HOPS - Homelab Orchestration Provisioning Script
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-3.1.0--beta-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-3.2.0-blue.svg)]()
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange.svg)]()
 
 **HOPS** is a comprehensive, automated deployment solution for popular homelab applications. It simplifies the process of setting up and managing Docker-based services including media servers, download clients, monitoring tools, and more.
 
-## 🆕 What's New in v3.1.0-beta
+## 🆕 What's New in v3.2.0
 
-### Major Security Enhancements
+### Major macOS Compatibility Improvements
+- **🍎 Enhanced macOS Support**: Comprehensive fixes for macOS installation and operation
+- **🔐 Keychain Integration**: Proper Docker authentication with macOS keychain
+- **👤 User Directory Fixes**: All directories now use actual user home instead of root
+- **🚀 Docker Desktop Integration**: Improved Docker Desktop startup and management
+- **⚡ Better Error Handling**: Enhanced error messages and troubleshooting for macOS
+
+### Bug Fixes
+- **🔧 Fixed password generation**: Resolved `shuf` command and encoding issues on macOS
+- **🐳 Fixed container creation**: Resolved Docker Compose working directory issues
+- **🏥 Fixed healthchecks**: Improved Jellyseerr and other service health monitoring
+- **📁 Fixed file permissions**: Proper ownership of config and media directories
+
+### Previous in v3.1.0-beta
 - **🔐 Encrypted Secret Management**: All passwords and sensitive data now encrypted with AES-256
 - **🛡️ Input Validation**: Comprehensive validation preventing injection attacks
 - **⚡ Privilege Separation**: Root operations separated from user operations
