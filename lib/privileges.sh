@@ -449,7 +449,7 @@ EOF
     
     # Generate service definitions
     for service in "${services[@]}"; do
-        if "$SCRIPT_DIR/hops_service_definitions_improved.sh" generate "$service" >> "$compose_file"; then
+        if "$SCRIPT_DIR/services-improved" generate "$service" >> "$compose_file"; then
             success "Added service: $service"
         else
             error_exit "Failed to generate service definition for: $service"
@@ -616,7 +616,7 @@ fi
 
 # Phase 1: Privileged setup
 info "📋 Phase 1: Privileged setup (requires root)"
-if "$SCRIPT_DIR/hops_privileged_setup.sh"; then
+if "$SCRIPT_DIR/privileged-setup"; then
     success "Privileged setup completed"
 else
     error_exit "Privileged setup failed"
@@ -651,7 +651,7 @@ case "$choice" in
         ;;
     4)
         echo "Available services:"
-        "$SCRIPT_DIR/hops_service_definitions_improved.sh" list
+        "$SCRIPT_DIR/services-improved" list
         read -p "Enter service names (space-separated): " -a services
         ;;
     *)
@@ -661,10 +661,10 @@ case "$choice" in
 esac
 
 # Generate and deploy
-if "$SCRIPT_DIR/hops_user_operations.sh" generate "${services[@]}"; then
+if "$SCRIPT_DIR/user-operations" generate "${services[@]}"; then
     echo "Configuration generated successfully"
     
-    if "$SCRIPT_DIR/hops_user_operations.sh" deploy; then
+    if "$SCRIPT_DIR/user-operations" deploy; then
         echo "Services deployed successfully"
     else
         echo "Deployment failed"
@@ -677,7 +677,7 @@ fi
 USERSCRIPT
 
 success "Installation completed successfully"
-success "Services are now running. Check status with: ./hops_user_operations.sh status"
+success "Services are now running. Check status with: ./user-operations status"
 EOF
     
     chmod +x "$wrapper_script"
@@ -703,9 +703,9 @@ main() {
             ;;
         
         "create-all")
-            create_privileged_setup "hops_privileged_setup.sh"
-            create_user_script "hops_user_operations.sh"
-            create_installation_wrapper "hops_install.sh"
+            create_privileged_setup "privileged-setup"
+            create_user_script "user-operations"
+            create_installation_wrapper "setup"
             ;;
         
         "run")

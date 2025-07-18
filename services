@@ -21,6 +21,30 @@ get_linuxserver_env() {
 EOF
 }
 
+# Get timezone mount path for current platform
+get_timezone_mount() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        # macOS doesn't need timezone mount, use TZ environment variable
+        echo ""
+    else
+        # Linux timezone mount
+        echo "$(get_timezone_mount)"
+    fi
+}
+
+# Get GPU device access for current platform
+get_gpu_devices() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        # macOS doesn't support GPU passthrough to Docker containers
+        echo ""
+    else
+        # Linux GPU device access
+        cat <<EOF
+$(get_gpu_devices)
+EOF
+    fi
+}
+
 # Common restart policy
 get_restart_policy() {
     echo "    restart: unless-stopped"
@@ -65,7 +89,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/sonarr:/config
       - \${DATA_ROOT}:/data
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 8989)
 $(get_homelab_network)
     labels:
@@ -91,7 +115,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/radarr:/config
       - \${DATA_ROOT}:/data
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 7878)
 $(get_homelab_network)
     labels:
@@ -117,7 +141,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/lidarr:/config
       - \${DATA_ROOT}:/data
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 8686)
 $(get_homelab_network)
     labels:
@@ -143,7 +167,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/readarr:/config
       - \${DATA_ROOT}:/data
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 8787)
 $(get_homelab_network)
     labels:
@@ -169,7 +193,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/bazarr:/config
       - \${DATA_ROOT}:/data
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 6767)
 $(get_homelab_network)
     labels:
@@ -194,7 +218,7 @@ $(get_restart_policy)
 $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/prowlarr:/config
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 9696)
 $(get_homelab_network)
     labels:
@@ -229,8 +253,7 @@ $(get_linuxserver_env)
       - \${CONFIG_ROOT}/tdarr/logs:/app/logs
       - \${DATA_ROOT}/media:/media
       - \${DATA_ROOT}/downloads/tdarr:/temp
-    devices:
-      - /dev/dri:/dev/dri # Intel GPU
+$(get_gpu_devices)
 $(get_web_healthcheck 8265)
 $(get_homelab_network)
     labels:
@@ -239,6 +262,33 @@ $(get_homelab_network)
       - "traefik.http.routers.tdarr.entrypoints=websecure"
       - "traefik.http.routers.tdarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.tdarr.loadbalancer.server.port=8265"
+
+EOF
+}
+
+generate_huntarr() {
+    cat <<EOF
+  huntarr:
+    image: ghcr.io/plexguide/huntarr:latest
+    container_name: huntarr
+$(get_restart_policy)
+    ports:
+      - "9705:9705"
+    environment:
+$(get_linuxserver_env)
+      - BASE_URL=\${BASE_URL:-}
+    volumes:
+      - \${CONFIG_ROOT}/huntarr:/config
+      - \${DATA_ROOT}:/data
+$(get_timezone_mount)
+$(get_web_healthcheck 9705 "/health")
+$(get_homelab_network)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.huntarr.rule=Host(\`huntarr.\${DOMAIN:-localhost}\`)"
+      - "traefik.http.routers.huntarr.entrypoints=websecure"
+      - "traefik.http.routers.huntarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.huntarr.loadbalancer.server.port=9705"
 
 EOF
 }
@@ -263,7 +313,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/qbittorrent:/config
       - \${DATA_ROOT}/downloads/torrents:/data/torrents
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 8082)
 $(get_homelab_network)
     labels:
@@ -294,7 +344,7 @@ $(get_linuxserver_env)
       - \${CONFIG_ROOT}/transmission:/config
       - \${DATA_ROOT}/downloads/torrents:/data/torrents
       - \${DATA_ROOT}/downloads/torrents/watch:/watch
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 9091 "/transmission/web/")
 $(get_homelab_network)
     labels:
@@ -320,7 +370,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/nzbget:/config
       - \${DATA_ROOT}/downloads/usenet:/data/usenet
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 6789)
 $(get_homelab_network)
     labels:
@@ -346,7 +396,7 @@ $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/sabnzbd:/config
       - \${DATA_ROOT}/downloads/usenet:/data/usenet
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 8080)
 $(get_homelab_network)
     labels:
@@ -380,9 +430,8 @@ $(get_restart_policy)
       - \${CONFIG_ROOT}/jellyfin:/config
       - \${CONFIG_ROOT}/jellyfin/cache:/cache
       - \${DATA_ROOT}/media:/media:ro
-      - /etc/localtime:/etc/localtime:ro
-    devices:
-      - /dev/dri:/dev/dri # Intel GPU
+$(get_timezone_mount)
+$(get_gpu_devices)
     group_add:
       - "109" # render group for GPU access
 $(get_web_healthcheck 8096 "/health")
@@ -425,9 +474,8 @@ $(get_restart_policy)
       - \${CONFIG_ROOT}/plex:/config
       - \${CONFIG_ROOT}/plex/transcode:/transcode
       - \${DATA_ROOT}/media:/data:ro
-      - /etc/localtime:/etc/localtime:ro
-    devices:
-      - /dev/dri:/dev/dri # Intel GPU
+$(get_timezone_mount)
+$(get_gpu_devices)
 $(get_web_healthcheck 32400 "/identity")
 $(get_homelab_network)
     labels:
@@ -456,9 +504,8 @@ $(get_restart_policy)
     volumes:
       - \${CONFIG_ROOT}/emby:/config
       - \${DATA_ROOT}/media:/data:ro
-      - /etc/localtime:/etc/localtime:ro
-    devices:
-      - /dev/dri:/dev/dri # Intel GPU
+$(get_timezone_mount)
+$(get_gpu_devices)
 $(get_web_healthcheck 8096)
 $(get_homelab_network)
     labels:
@@ -538,7 +585,7 @@ $(get_restart_policy)
       - TZ=\${TZ}
     volumes:
       - \${CONFIG_ROOT}/overseerr:/app/config
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 5055)
 $(get_homelab_network)
     labels:
@@ -564,7 +611,7 @@ $(get_restart_policy)
       - TZ=\${TZ}
     volumes:
       - \${CONFIG_ROOT}/jellyseerr:/app/config
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 5055)
 $(get_homelab_network)
     labels:
@@ -589,7 +636,7 @@ $(get_restart_policy)
 $(get_linuxserver_env)
     volumes:
       - \${CONFIG_ROOT}/ombi:/config
-      - /etc/localtime:/etc/localtime:ro
+$(get_timezone_mount)
 $(get_web_healthcheck 3579)
 $(get_homelab_network)
     labels:
@@ -850,6 +897,7 @@ generate_service_definition() {
         "bazarr") generate_bazarr ;;
         "prowlarr") generate_prowlarr ;;
         "tdarr") generate_tdarr ;;
+        "huntarr") generate_huntarr ;;
         
         # Download Clients
         "qbittorrent") generate_qbittorrent ;;
@@ -968,7 +1016,7 @@ entryPoints:
 
 providers:
   docker:
-    endpoint: "unix:///var/run/docker.sock"
+    endpoint: "unix://$(get_docker_socket_path)"
     exposedByDefault: false
   file:
     directory: /etc/traefik/dynamic
@@ -1266,7 +1314,7 @@ show_usage() {
 HOPS Service Definitions Script v3.1.0
 
 Usage:
-  source hops_service_definitions.sh
+  source services
   generate_hops_stack service1 service2 service3...
 
 Examples:

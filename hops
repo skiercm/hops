@@ -13,9 +13,9 @@ readonly SCRIPT_NAME="HOPS"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Default script locations
-readonly INSTALLER_SCRIPT="$SCRIPT_DIR/hops_installer_enhanced.sh"
-readonly UNINSTALLER_SCRIPT="$SCRIPT_DIR/hops_uninstaller_fixed.sh"
-readonly SERVICE_DEFINITIONS="$SCRIPT_DIR/hops_service_definitions.sh"
+readonly INSTALLER_SCRIPT="$SCRIPT_DIR/install"
+readonly UNINSTALLER_SCRIPT="$SCRIPT_DIR/uninstall"
+readonly SERVICE_DEFINITIONS="$SCRIPT_DIR/services"
 
 # Color codes for output
 readonly RED='\033[0;31m'
@@ -27,16 +27,16 @@ readonly CYAN='\033[0;36m'
 readonly WHITE='\033[1;37m'
 readonly NC='\033[0m' # No Color
 
-# Logging setup
-readonly LOG_DIR="/var/log/hops"
-readonly LOG_FILE="$LOG_DIR/hops-main-$(date +%Y%m%d-%H%M%S).log"
+# Load system utilities
+source "$SCRIPT_DIR/lib/system.sh"
+
+# Logging setup (will be set by setup_logging)
+LOG_DIR=""
+LOG_FILE=""
 
 # Initialize logging
 init_logging() {
-    if [[ $EUID -eq 0 ]]; then
-        mkdir -p "$LOG_DIR"
-        touch "$LOG_FILE"
-    fi
+    setup_logging "hops-main"
 }
 
 # Logging function
@@ -130,7 +130,9 @@ check_system_requirements() {
     info "Checking system requirements..."
     
     # Check OS
-    if ! grep -qE '^ID=(ubuntu|debian|mint)' /etc/os-release; then
+    # OS check is handled by lib/system.sh
+    detect_os
+    if [[ "$OS_NAME_LOWER" != "macos" && ! "$OS_NAME_LOWER" =~ ^(ubuntu|debian|mint)$ ]]; then
         warning "This script is designed for Ubuntu/Debian/Mint systems"
         echo -e "Continue anyway? [y/N]: "
         read -r continue_choice
@@ -442,7 +444,7 @@ show_access_info() {
     echo -e "${BLUE}📱 Access your services at:${NC}"
     
     # Get local IP
-    local local_ip=$(hostname -I | awk '{print $1}')
+    local local_ip=$(get_primary_ip)
     
     # Service URLs with paths
     local services=(
@@ -578,14 +580,18 @@ show_help() {
     echo -e "  • Internet connection\n"
     
     echo -e "${BLUE}📁 Default Locations:${NC}"
-    echo -e "  • Homelab directory: ~/homelab/"
-    echo -e "  • App configurations: /opt/appdata/"
-    echo -e "  • Media storage: /mnt/media/"
-    echo -e "  • Logs: /var/log/hops/\n"
+    local default_homelab_path=$(get_default_homelab_path)
+    local default_config_path=$(get_default_config_path)
+    local default_media_path=$(get_default_media_path)
+    
+    echo -e "  • Homelab directory: $default_homelab_path/"
+    echo -e "  • App configurations: $default_config_path/"
+    echo -e "  • Media storage: $default_media_path/"
+    echo -e "  • Logs: $LOG_DIR/\n"
     
     echo -e "${BLUE}🆘 Troubleshooting:${NC}"
     echo -e "  • Check logs in the 'View Logs' menu"
-    echo -e "  • Verify Docker is running: systemctl status docker"
+    echo -e "  • Verify Docker is running: docker info"
     echo -e "  • Check container status: docker ps"
     echo -e "  • View service logs: docker logs [service-name]"
     echo -e "  • Restart services: docker compose restart [service-name]\n"

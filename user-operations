@@ -45,7 +45,7 @@ EOF
     
     # Generate service definitions
     for service in "${services[@]}"; do
-        if "$SCRIPT_DIR/hops_service_definitions_improved.sh" generate "$service" >> "$compose_file"; then
+        if "$SCRIPT_DIR/services-improved" generate "$service" >> "$compose_file"; then
             success "Added service: $service"
         else
             error_exit "Failed to generate service definition for: $service"

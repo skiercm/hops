@@ -26,7 +26,7 @@ fi
 
 # Phase 1: Privileged setup
 info "📋 Phase 1: Privileged setup (requires root)"
-if "$SCRIPT_DIR/hops_privileged_setup.sh"; then
+if "$SCRIPT_DIR/privileged-setup"; then
     success "Privileged setup completed"
 else
     error_exit "Privileged setup failed"
@@ -61,7 +61,7 @@ case "$choice" in
         ;;
     4)
         echo "Available services:"
-        "$SCRIPT_DIR/hops_service_definitions_improved.sh" list
+        "$SCRIPT_DIR/services-improved" list
         read -p "Enter service names (space-separated): " -a services
         ;;
     *)
@@ -71,10 +71,10 @@ case "$choice" in
 esac
 
 # Generate and deploy
-if "$SCRIPT_DIR/hops_user_operations.sh" generate "${services[@]}"; then
+if "$SCRIPT_DIR/user-operations" generate "${services[@]}"; then
     echo "Configuration generated successfully"
     
-    if "$SCRIPT_DIR/hops_user_operations.sh" deploy; then
+    if "$SCRIPT_DIR/user-operations" deploy; then
         echo "Services deployed successfully"
     else
         echo "Deployment failed"
@@ -87,4 +87,4 @@ fi
 USERSCRIPT
 
 success "Installation completed successfully"
-success "Services are now running. Check status with: ./hops_user_operations.sh status"
+success "Services are now running. Check status with: ./user-operations status"

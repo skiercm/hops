@@ -21,7 +21,7 @@
 - **📖 Documentation**: Complete `CLAUDE.md` for development guidance
 
 ### Installation Methods
-- **🚀 New Secure Installer**: `sudo ./hops_install.sh` - Recommended method
+- **🚀 New Secure Installer**: `sudo ./setup` - Recommended method
 - **⚙️ Manual Installation**: Separate privileged and user operations
 - **🔄 Legacy Support**: Original `hops.sh` still fully supported
 
@@ -78,6 +78,7 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 - **Bazarr** - Subtitle management
 - **Prowlarr** - Indexer management
 - **Tdarr** - Media transcoding
+- **Huntarr** - Missing media discovery and automation
 
 ### ⬇️ Download Clients
 - **qBittorrent** - Feature-rich BitTorrent client
@@ -131,12 +132,12 @@ chmod +x *.sh
 ### 2. Run Installation (New Improved Method)
 ```bash
 # Option 1: Use the new secure installation wrapper
-sudo ./hops_install.sh
+sudo ./setup
 
 # Option 2: Manual two-phase installation
-sudo ./hops_privileged_setup.sh  # Run as root
-./hops_user_operations.sh generate <services>  # Run as user
-./hops_user_operations.sh deploy  # Run as user
+sudo ./privileged-setup  # Run as root
+./user-operations generate <services>  # Run as user
+./user-operations deploy  # Run as user
 
 # Option 3: Legacy installation (still supported)
 sudo ./hops.sh
@@ -230,10 +231,10 @@ ACME_EMAIL=admin@yourdomain.com
 ### Service Management Commands
 ```bash
 # NEW: User operations script (runs without sudo)
-./hops_user_operations.sh status        # View service status
-./hops_user_operations.sh logs <service> # View service logs
-./hops_user_operations.sh deploy        # Deploy services
-./hops_user_operations.sh stop          # Stop all services
+./user-operations status        # View service status
+./user-operations logs <service> # View service logs
+./user-operations deploy        # Deploy services
+./user-operations stop          # Stop all services
 
 # Legacy: Direct Docker Compose commands
 cd ~/homelab
@@ -257,10 +258,10 @@ hops/
 │   ├── validation.sh      # Input validation
 │   ├── secrets.sh         # Secret management
 │   └── privileges.sh      # Privilege management
-├── hops_install.sh        # NEW: Installation wrapper
-├── hops_privileged_setup.sh  # NEW: Root-only operations
-├── hops_user_operations.sh   # NEW: User operations
-├── hops_service_definitions_improved.sh  # NEW: Enhanced service definitions
+├── setup                  # NEW: Installation wrapper
+├── privileged-setup       # NEW: Root-only operations
+├── user-operations        # NEW: User operations
+├── services-improved      # NEW: Enhanced service definitions
 └── hops.sh               # Legacy main script (still supported)
 ```
 
@@ -378,11 +379,11 @@ bash -n lib/*.sh
 bash -n *.sh
 
 # Test service definitions
-./hops_service_definitions_improved.sh list
-./hops_service_definitions_improved.sh generate jellyfin
+./services-improved list
+./services-improved generate jellyfin
 
 # Test new installation method
-sudo ./hops_install.sh
+sudo ./setup
 
 # Test legacy method
 sudo ./hops.sh

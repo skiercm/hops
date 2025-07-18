@@ -11,22 +11,17 @@ install_hops() {
     local SCRIPT_VERSION="3.1.0"
     local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+    # Load system utilities
+    source "$SCRIPT_DIR/lib/common.sh"
+    source "$SCRIPT_DIR/lib/system.sh"
+
     # --------------------------------------------
     # LOGGING SETUP
     # --------------------------------------------
-    local LOG_DIR="/var/log/hops"
-    local LOG_FILE="$LOG_DIR/homelab-setup-$(date +%Y%m%d-%H%M%S).log"
-    mkdir -p "$LOG_DIR"
-    touch "$LOG_FILE"
+    setup_logging "homelab-setup"
 
-    log() {
-        echo -e "$(date '+%Y-%m-%d %T') - $1" | tee -a "$LOG_FILE"
-    }
-
-    error_exit() {
-        log "❌ ERROR: $1"
-        log "❌ Installation failed. Check logs at: $LOG_FILE"
-        exit 1
+    local_error_exit() {
+        error_exit "$1"
     }
 
     # Enhanced error handling with rollback
@@ -89,32 +84,20 @@ EOF
     # --------------------------------------------
     # SYSTEM REQUIREMENTS CHECK
     # --------------------------------------------
-    check_system_requirements() {
+    validate_system_requirements() {
         local MIN_RAM_GB=2
         local MIN_DISK_GB=10
         local MIN_CORES=2
         
-        log "🔍 Checking system requirements..."
+        info "🔍 Validating system requirements..."
         
-        # Check RAM
-        local RAM_GB=$(free -g | awk '/^Mem:/{print $2}')
-        if [[ $RAM_GB -lt $MIN_RAM_GB ]]; then
-            error_exit "Insufficient RAM: ${RAM_GB}GB detected, ${MIN_RAM_GB}GB required"
-        fi
+        # Detect OS first
+        detect_os
         
-        # Check disk space
-        local DISK_AVAIL=$(df -BG --output=avail / | tail -n 1 | tr -d 'G')
-        if [[ $DISK_AVAIL -lt $MIN_DISK_GB ]]; then
-            error_exit "Insufficient disk space: ${DISK_AVAIL}GB available, ${MIN_DISK_GB}GB required"
-        fi
+        # Check system requirements using new abstraction
+        check_system_requirements $MIN_RAM_GB $MIN_DISK_GB
         
-        # Check CPU cores
-        local CPU_CORES=$(nproc)
-        if [[ $CPU_CORES -lt $MIN_CORES ]]; then
-            log "⚠️ Low CPU cores: ${CPU_CORES} detected, ${MIN_CORES} recommended"
-        fi
-        
-        log "✅ System meets minimum requirements (${RAM_GB}GB RAM, ${CPU_CORES} cores, ${DISK_AVAIL}GB disk)"
+        return 0
     }
 
     # --------------------------------------------
@@ -122,22 +105,37 @@ EOF
     # --------------------------------------------
     check_required_packages() {
         local missing_packages=()
-        local required_packages=("curl" "wget" "openssl" "lsof" "apache2-utils")
+        local required_packages=("curl" "wget" "openssl" "lsof")
         
-        log "📦 Checking required packages..."
+        # Add OS-specific packages
+        if [[ "$OS_NAME_LOWER" == "macos" ]]; then
+            required_packages+=("httpd")  # Apache on macOS (for htpasswd)
+        else
+            required_packages+=("apache2-utils")  # Apache utils on Linux
+        fi
+        
+        info "📦 Checking required packages..."
         
         for package in "${required_packages[@]}"; do
-            if ! command -v "${package%%-*}" &>/dev/null; then
+            local check_cmd="${package%%-*}"
+            if [[ "$package" == "httpd" ]]; then
+                check_cmd="htpasswd"  # Check for htpasswd command on macOS
+            fi
+            
+            if ! command -v "$check_cmd" &>/dev/null; then
                 missing_packages+=("$package")
             fi
         done
         
         if [[ ${#missing_packages[@]} -gt 0 ]]; then
-            log "📦 Installing missing packages: ${missing_packages[*]}"
-            apt-get update && apt-get install -y "${missing_packages[@]}"
+            info "📦 Installing missing packages: ${missing_packages[*]}"
+            
+            for package in "${missing_packages[@]}"; do
+                install_package "$package"
+            done
         fi
         
-        log "✅ All required packages are installed"
+        success "✅ All required packages are installed"
     }
 
     # --------------------------------------------
@@ -147,24 +145,7 @@ EOF
         error_exit "This script must be run as root or with sudo."
     fi
 
-    # --------------------------------------------
-    # OS DETECTION
-    # --------------------------------------------
-    detect_os() {
-        if command -v lsb_release &>/dev/null; then
-            OS_NAME=$(lsb_release -is)
-            OS_VERSION=$(lsb_release -rs)
-        else
-            OS_NAME=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
-            OS_VERSION=$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
-        fi
-        OS_NAME_LOWER=$(echo "$OS_NAME" | tr '[:upper:]' '[:lower:]')
-
-        if [[ ! "$OS_NAME_LOWER" =~ ^(ubuntu|debian|linuxmint|mint)$ ]]; then
-            error_exit "Unsupported OS: $OS_NAME Only Debian/Ubuntu/Mint supported"
-        fi
-        log "✅ Detected OS: $OS_NAME $OS_VERSION"
-    }
+    # OS detection is handled by the lib/system.sh functions
 
     # --------------------------------------------
     # USER CONFIGURATION COLLECTION
@@ -201,13 +182,16 @@ EOF
         
         # Directory configuration
         echo -e "\n📁 Directory Configuration"
-        echo -e "Media directory [/mnt/media]: "
-        read -r media_dir
-        MEDIA_DIR="${media_dir:-/mnt/media}"
+        local default_media_path=$(get_default_media_path)
+        local default_config_path=$(get_default_config_path)
         
-        echo -e "Application data directory [/opt/appdata]: "
+        echo -e "Media directory [$default_media_path]: "
+        read -r media_dir
+        MEDIA_DIR="${media_dir:-$default_media_path}"
+        
+        echo -e "Application data directory [$default_config_path]: "
         read -r appdata_dir
-        APPDATA_DIR="${appdata_dir:-/opt/appdata}"
+        APPDATA_DIR="${appdata_dir:-$default_config_path}"
         
         # Create directories
         mkdir -p "$MEDIA_DIR"/{movies,tv,music,books,downloads}
@@ -278,8 +262,8 @@ EOF
         local CONFLICTS=()
         
         # Source service definitions to get port mappings
-        if [[ -f "$SCRIPT_DIR/hops_service_definitions.sh" ]]; then
-            source "$SCRIPT_DIR/hops_service_definitions.sh"
+        if [[ -f "$SCRIPT_DIR/services" ]]; then
+            source "$SCRIPT_DIR/services"
         fi
         
         for svc in "${SERVICES[@]}"; do
@@ -438,43 +422,66 @@ EOF
     select_services() {
         echo -e "\n📺 CORE MEDIA TOOLS"
         echo "1) Sonarr      2) Radarr      3) Lidarr      4) Readarr"
-        echo "5) Bazarr      6) Prowlarr    7) Tdarr"
+        echo "5) Bazarr      6) Prowlarr    7) Tdarr       8) Huntarr"
 
         echo -e "\n⬇️  DOWNLOAD CLIENTS"
-        echo "8) NZBGet      9) SABnzbd     10) Transmission  11) qBittorrent"
+        echo "9) NZBGet      10) SABnzbd    11) Transmission  12) qBittorrent"
 
         echo -e "\n🎞️  MEDIA SERVERS"
-        echo "12) Plex       13) Jellyfin   14) Jellystat     15) Emby"
+        echo "13) Plex       14) Jellyfin   15) Jellystat     16) Emby"
 
         echo -e "\n🎛️  REQUEST MANAGEMENT"
-        echo "16) Overseerr  17) Jellyseerr 18) Ombi"
+        echo "17) Overseerr  18) Jellyseerr 19) Ombi"
 
         echo -e "\n🔒 NETWORK & SECURITY"
-        echo "19) Traefik    20) Nginx Proxy Manager  21) Authelia"
+        echo "20) Traefik    21) Nginx Proxy Manager  22) Authelia"
 
         echo -e "\n📈 MONITORING"
-        echo "22) Portainer  23) Watchtower  24) Uptime Kuma"
+        echo "23) Portainer  24) Watchtower  25) Uptime Kuma"
 
         echo -e "\n📝 Select services (space-separated numbers, or 'all' for everything): "
         read -a service_choices
 
-        declare -A SERVICE_MAP=(
-            [1]="sonarr" [2]="radarr" [3]="lidarr" [4]="readarr"
-            [5]="bazarr" [6]="prowlarr" [7]="tdarr" [8]="nzbget" 
-            [9]="sabnzbd" [10]="transmission" [11]="qbittorrent"
-            [12]="plex" [13]="jellyfin" [14]="jellystat" [15]="emby"
-            [16]="overseerr" [17]="jellyseerr" [18]="ombi"
-            [19]="traefik" [20]="nginx-proxy-manager" [21]="authelia"
-            [22]="portainer" [23]="watchtower" [24]="uptime-kuma"
-        )
+        # Function to map service numbers to names (bash 3.2 compatible)
+        get_service_name() {
+            case "$1" in
+                1) echo "sonarr" ;;
+                2) echo "radarr" ;;
+                3) echo "lidarr" ;;
+                4) echo "readarr" ;;
+                5) echo "bazarr" ;;
+                6) echo "prowlarr" ;;
+                7) echo "tdarr" ;;
+                8) echo "huntarr" ;;
+                9) echo "nzbget" ;;
+                10) echo "sabnzbd" ;;
+                11) echo "transmission" ;;
+                12) echo "qbittorrent" ;;
+                13) echo "plex" ;;
+                14) echo "jellyfin" ;;
+                15) echo "jellystat" ;;
+                16) echo "emby" ;;
+                17) echo "overseerr" ;;
+                18) echo "jellyseerr" ;;
+                19) echo "ombi" ;;
+                20) echo "traefik" ;;
+                21) echo "nginx-proxy-manager" ;;
+                22) echo "authelia" ;;
+                23) echo "portainer" ;;
+                24) echo "watchtower" ;;
+                25) echo "uptime-kuma" ;;
+                *) echo "" ;;
+            esac
+        }
 
         SERVICES=()
         if [[ "${service_choices[0]}" == "all" ]]; then
-            SERVICES=($(printf '%s\n' "${SERVICE_MAP[@]}" | sort))
+            SERVICES=("sonarr" "radarr" "lidarr" "readarr" "bazarr" "prowlarr" "tdarr" "huntarr" "nzbget" "sabnzbd" "transmission" "qbittorrent" "plex" "jellyfin" "jellystat" "emby" "overseerr" "jellyseerr" "ombi" "traefik" "nginx-proxy-manager" "authelia" "portainer" "watchtower" "uptime-kuma")
             log "🎯 Selected all services"
         else
             for choice in "${service_choices[@]}"; do
-                [[ -n "${SERVICE_MAP[$choice]}" ]] && SERVICES+=("${SERVICE_MAP[$choice]}")
+                service_name=$(get_service_name "$choice")
+                [[ -n "$service_name" ]] && SERVICES+=("$service_name")
             done
         fi
 
@@ -494,8 +501,8 @@ EOF
     # --------------------------------------------
     check_service_dependencies() {
         # Source service definitions for dependency resolution
-        if [[ -f "$SCRIPT_DIR/hops_service_definitions.sh" ]]; then
-            source "$SCRIPT_DIR/hops_service_definitions.sh"
+        if [[ -f "$SCRIPT_DIR/services" ]]; then
+            source "$SCRIPT_DIR/services"
             
             # Resolve dependencies
             local all_services=($(resolve_dependencies "${SERVICES[@]}"))
@@ -598,8 +605,8 @@ EOF
         create_env_file "$HOMELAB_DIR"
 
         # Source the service definitions
-        if [[ -f "$SCRIPT_DIR/hops_service_definitions.sh" ]]; then
-            source "$SCRIPT_DIR/hops_service_definitions.sh"
+        if [[ -f "$SCRIPT_DIR/services" ]]; then
+            source "$SCRIPT_DIR/services"
             
             # Export variables for service definitions
             export PUID PGID TIMEZONE MEDIA_DIR APPDATA_DIR
@@ -613,7 +620,7 @@ EOF
             
             log "✅ Generated Docker Compose with ${#SERVICES[@]} services"
         else
-            error_exit "Service definitions file not found: $SCRIPT_DIR/hops_service_definitions.sh"
+            error_exit "Service definitions file not found: $SCRIPT_DIR/services"
         fi
 
         # Create networks if they don't exist
@@ -777,6 +784,11 @@ EOF
     }
 
     setup_firewall() {
+        if [[ "$OS_NAME_LOWER" == "macos" ]]; then
+            info "🔥 Skipping firewall configuration on macOS (configure manually if needed)"
+            return 0
+        fi
+        
         if command -v ufw &>/dev/null; then
             log "🔥 Configuring UFW firewall..."
             
@@ -819,47 +831,43 @@ EOF
     # --------------------------------------------
     # MAIN INSTALLATION FLOW
     # --------------------------------------------
-    check_system_requirements
-    detect_os
+    validate_system_requirements
     check_required_packages
     collect_user_configuration
     select_services
     check_all_ports "${SERVICES[@]}"
 
-    # Install dependencies
-    log "📦 Installing prerequisites..."
-    if ! apt-get update &>/dev/null; then
-        error_exit "Failed to update package lists. Check your internet connection."
+    # Install dependencies using abstraction
+    info "📦 Installing prerequisites..."
+    
+    # Define packages based on OS
+    local required_packages
+    if [[ "$OS_NAME_LOWER" == "macos" ]]; then
+        required_packages=("curl" "openssl" "lsof" "httpd")
+    else
+        required_packages=("ca-certificates" "curl" "gnupg" "lsb-release" "lsof" "ufw" "fail2ban" "openssl" "apache2-utils")
     fi
-
-    local REQUIRED_PACKAGES="ca-certificates curl gnupg lsb-release lsof ufw fail2ban openssl apache2-utils"
-    if ! apt-get install -y $REQUIRED_PACKAGES 2>&1 | tee -a "$LOG_FILE"; then
-        error_exit "Failed to install required packages."
-    fi
+    
+    # Install each package
+    for package in "${required_packages[@]}"; do
+        if ! command -v "${package%%-*}" &>/dev/null; then
+            install_package "$package"
+        fi
+    done
 
     # Install Docker if not present
-    if ! command -v docker &>/dev/null; then
-        log "🐳 Installing Docker..."
-        if ! curl -fsSL https://get.docker.com | sh 2>&1 | tee -a "$LOG_FILE"; then
-            error_exit "Failed to install Docker."
-        fi
-        
-        # Add user to docker group
-        if [[ -n "$SUDO_USER" ]]; then
-            usermod -aG docker "$SUDO_USER"
-            log "✅ Added $SUDO_USER to docker group (restart session to take effect)"
-        fi
+    if ! check_docker_installation; then
+        install_docker
     else
-        log "✅ Docker already installed ($(docker --version))"
+        success "✅ Docker already installed and running"
     fi
 
     check_docker_compose_version
 
     # Ensure Docker daemon is running
-    if ! systemctl is-active --quiet docker; then
-        log "🔄 Starting Docker daemon..."
-        systemctl start docker || error_exit "Failed to start Docker daemon"
-        systemctl enable docker || log "⚠️ Could not enable Docker service"
+    if ! is_service_running docker; then
+        start_service docker
+        enable_service docker
     fi
 
     setup_firewall
@@ -891,12 +899,12 @@ EOF
     echo -e "\n📱 Deployed Services:"
     local service_count=0
     for svc in "${SERVICES[@]}"; do
-        if [[ -f "$SCRIPT_DIR/hops_service_definitions.sh" ]]; then
-            source "$SCRIPT_DIR/hops_service_definitions.sh"
+        if [[ -f "$SCRIPT_DIR/services" ]]; then
+            source "$SCRIPT_DIR/services"
             local ports=$(get_service_ports "$svc")
             local main_port=$(echo $ports | cut -d' ' -f1)
             if [[ -n "$main_port" ]]; then
-                echo "   • $svc: http://$(hostname -I | awk '{print $1}'):$main_port"
+                echo "   • $svc: http://$(get_primary_ip):$main_port"
                 ((service_count++))
             fi
         fi
@@ -922,3 +930,6 @@ EOF
     log "🎉 HOPS Enhanced deployment completed successfully!"
     return 0
 }
+
+# Execute the main installation function
+install_hops

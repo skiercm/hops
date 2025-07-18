@@ -4,6 +4,12 @@
 # Shared functions for logging, error handling, and UI
 # Version: 3.1.0
 
+# Prevent multiple sourcing
+if [[ -n "${HOPS_COMMON_LOADED:-}" ]]; then
+    return 0
+fi
+readonly HOPS_COMMON_LOADED=1
+
 # Color codes for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
@@ -27,7 +33,13 @@ setup_logging() {
         return 1
     fi
     
-    LOG_DIR="/var/log/hops"
+    # Set platform-specific log directory
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        LOG_DIR="/usr/local/var/log/hops"
+    else
+        LOG_DIR="/var/log/hops"
+    fi
+    
     LOG_FILE="$LOG_DIR/${log_prefix}-$(date +%Y%m%d-%H%M%S).log"
     
     if [[ $EUID -eq 0 ]]; then
@@ -214,10 +226,16 @@ is_valid_ip() {
     local regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
     
     if [[ $ip =~ $regex ]]; then
-        local IFS='.'
-        local -a octets=($ip)
+        # Split IP into octets using parameter expansion
+        local octet1="${ip%%.*}"
+        local temp="${ip#*.}"
+        local octet2="${temp%%.*}"
+        temp="${temp#*.}"
+        local octet3="${temp%%.*}"
+        local octet4="${temp#*.}"
         
-        for octet in "${octets[@]}"; do
+        # Check each octet
+        for octet in "$octet1" "$octet2" "$octet3" "$octet4"; do
             if [[ $octet -gt 255 ]]; then
                 return 1
             fi
