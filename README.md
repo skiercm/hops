@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/Version-3.1.0-blue.svg)]()
-[![Platform](https://img.shields.io/badge/Platform-Ubuntu%2FDebian%2FMint-orange.svg)]()
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-orange.svg)]()
 
 **HOPS** is a comprehensive, automated deployment solution for popular homelab applications. It simplifies the process of setting up and managing Docker-based services including media servers, download clients, monitoring tools, and more.
 
@@ -19,6 +19,7 @@
 - **🔧 Enhanced Error Handling**: Better error messages and recovery mechanisms
 - **🎯 Improved Service Definitions**: Standardized service generation with validation
 - **📖 Documentation**: Complete `CLAUDE.md` for development guidance
+- **🍎 Cross-Platform Support**: Native support for both Linux and macOS with automatic dependency installation
 
 ### Installation Methods
 - **🚀 New Secure Installer**: `sudo ./setup` - Recommended method
@@ -110,15 +111,27 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 ## 🔧 System Requirements
 
 ### Minimum Requirements
-- **OS**: Ubuntu 20.04+, Debian 11+, or Linux Mint 20+
+- **OS**: 
+  - **Linux**: Ubuntu 20.04+, Debian 11+, or Linux Mint 20+
+  - **macOS**: 11.0+ (Big Sur) with Intel or Apple Silicon
 - **RAM**: 2GB (4GB+ recommended)
 - **Storage**: 10GB free space (more for media)
 - **CPU**: 2 cores recommended
 - **Network**: Internet connection required
 
 ### Prerequisites
+
+**Linux:**
 - Root/sudo access
 - x86_64 architecture
+- Internet connection
+
+**macOS:**
+- Admin access (sudo privileges)
+- Intel (x86_64) or Apple Silicon (ARM64)
+- Internet connection
+- Homebrew will be installed automatically if not present
+- Docker Desktop will be installed automatically if not present
 
 ## 🚀 Quick Start
 
@@ -126,7 +139,7 @@ HOPS (Homelab Orchestration Provisioning Script) automates the deployment of a c
 ```bash
 git clone https://github.com/skiercm/hops.git
 cd hops
-chmod +x *.sh
+chmod +x hops install uninstall setup
 ```
 
 ### 2. Run Installation (New Improved Method)
