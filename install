@@ -591,7 +591,7 @@ EOF
     # DOCKER COMPOSE FILE GENERATION
     # --------------------------------------------
     generate_docker_compose() {
-        local HOMELAB_DIR="$HOME/homelab"
+        local HOMELAB_DIR="$HOME/hops"
         mkdir -p "$HOMELAB_DIR"
         cd "$HOMELAB_DIR"
 
@@ -778,7 +778,7 @@ EOF
         find "$APPDATA_DIR" -name "*.pem" -exec chmod 600 {} \; 2>/dev/null || true
         
         # Set secure permissions on homelab directory
-        chmod 750 "$HOME/homelab"
+        chmod 750 "$HOME/hops"
         
         log "✅ Security hardening applied"
     }
@@ -884,7 +884,7 @@ EOF
 
     log "📋 Deployment Summary:"
     echo -e "\n📂 Configuration:"
-    echo "   • Homelab Directory: $HOME/homelab"
+    echo "   • Homelab Directory: $HOME/hops"
     echo "   • Application Data: $APPDATA_DIR"
     echo "   • Media Directory: $MEDIA_DIR"
     echo "   • User/Group: $RUNNING_USER ($PUID:$PGID)"

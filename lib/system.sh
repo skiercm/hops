@@ -379,7 +379,7 @@ run_system_checks() {
 # Get platform-specific default paths
 get_default_media_path() {
     if [[ "$OS_NAME_LOWER" == "macos" ]]; then
-        echo "/Users/$USER/homelab/media"
+        echo "/Users/$USER/hops/media"
     else
         echo "/mnt/media"
     fi
@@ -387,7 +387,7 @@ get_default_media_path() {
 
 get_default_config_path() {
     if [[ "$OS_NAME_LOWER" == "macos" ]]; then
-        echo "/Users/$USER/homelab/config"
+        echo "/Users/$USER/hops/config"
     else
         echo "/opt/appdata"
     fi
@@ -395,9 +395,9 @@ get_default_config_path() {
 
 get_default_homelab_path() {
     if [[ "$OS_NAME_LOWER" == "macos" ]]; then
-        echo "/Users/$USER/homelab"
+        echo "/Users/$USER/hops"
     else
-        echo "/home/$USER/homelab"
+        echo "/home/$USER/hops"
     fi
 }
 

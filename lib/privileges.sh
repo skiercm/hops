@@ -433,12 +433,12 @@ check_docker_access() {
 # Generate Docker Compose configuration
 generate_docker_compose() {
     local services=("$@")
-    local compose_file="$HOME/homelab/docker-compose.yml"
+    local compose_file="$HOME/hops/docker-compose.yml"
     
     info "📝 Generating Docker Compose configuration..."
     
     # Create homelab directory
-    mkdir -p "$HOME/homelab"
+    mkdir -p "$HOME/hops"
     
     # Generate compose file header
     cat > "$compose_file" << EOF
@@ -473,7 +473,7 @@ EOF
 
 # Deploy services
 deploy_services() {
-    local compose_file="$HOME/homelab/docker-compose.yml"
+    local compose_file="$HOME/hops/docker-compose.yml"
     
     if [[ ! -f "$compose_file" ]]; then
         error_exit "Docker Compose file not found: $compose_file"
@@ -481,7 +481,7 @@ deploy_services() {
     
     info "🚀 Deploying services..."
     
-    cd "$HOME/homelab"
+    cd "$HOME/hops"
     
     # Pull images
     if docker compose pull; then
@@ -500,7 +500,7 @@ deploy_services() {
 
 # Stop services
 stop_services() {
-    local compose_file="$HOME/homelab/docker-compose.yml"
+    local compose_file="$HOME/hops/docker-compose.yml"
     
     if [[ ! -f "$compose_file" ]]; then
         error_exit "Docker Compose file not found: $compose_file"
@@ -508,7 +508,7 @@ stop_services() {
     
     info "🛑 Stopping services..."
     
-    cd "$HOME/homelab"
+    cd "$HOME/hops"
     
     if docker compose down; then
         success "Services stopped successfully"
@@ -519,7 +519,7 @@ stop_services() {
 
 # Show service status
 show_service_status() {
-    local compose_file="$HOME/homelab/docker-compose.yml"
+    local compose_file="$HOME/hops/docker-compose.yml"
     
     if [[ ! -f "$compose_file" ]]; then
         error_exit "Docker Compose file not found: $compose_file"
@@ -527,7 +527,7 @@ show_service_status() {
     
     info "📊 Service status:"
     
-    cd "$HOME/homelab"
+    cd "$HOME/hops"
     docker compose ps
 }
 
@@ -563,7 +563,7 @@ main() {
             if [[ $# -eq 0 ]]; then
                 error_exit "Usage: $0 logs <service_name>"
             fi
-            cd "$HOME/homelab"
+            cd "$HOME/hops"
             docker compose logs -f "$1"
             ;;
         

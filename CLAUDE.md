@@ -86,7 +86,7 @@ sudo tail -f /var/log/hops/hops-main-*.log
 sudo tail -f /usr/local/var/log/hops/hops-main-*.log
 
 # View Docker Compose logs
-cd ~/homelab && docker compose logs -f [service-name]
+cd ~/hops && docker compose logs -f [service-name]
 ```
 
 ## Service Architecture
@@ -96,7 +96,7 @@ All services follow a standardized Docker Compose pattern:
 - LinuxServer.io containers with PUID/PGID/TZ environment variables
 - Platform-aware volume mounting:
   - **Linux**: `/opt/appdata` for configs, `/mnt/media` for data
-  - **macOS**: `/Users/[user]/homelab/config` for configs, `/Users/[user]/homelab/media` for data
+  - **macOS**: `/Users/[user]/hops/config` for configs, `/Users/[user]/hops/media` for data
 - Health checks for web services
 - Unified network configuration (`homelab` network)
 - Restart policy: `unless-stopped`
@@ -114,7 +114,7 @@ All services follow a standardized Docker Compose pattern:
 
 ### Linux File Structure
 ```
-~/homelab/                    # Main deployment directory
+~/hops/                       # Main deployment directory
 ├── docker-compose.yml        # Generated service definitions
 ├── .env                      # Environment variables
 └── logs/                     # Application logs
@@ -131,7 +131,7 @@ All services follow a standardized Docker Compose pattern:
 
 ### macOS File Structure
 ```
-~/homelab/                    # Main deployment directory
+~/hops/                       # Main deployment directory
 ├── docker-compose.yml        # Generated service definitions
 ├── .env                      # Environment variables
 ├── logs/                     # Application logs
@@ -146,7 +146,7 @@ All services follow a standardized Docker Compose pattern:
 
 ## Environment Configuration
 
-Key environment variables in `~/homelab/.env`:
+Key environment variables in `~/hops/.env`:
 - `PUID`/`PGID`: User/group IDs for file permissions
 - `TZ`: Timezone configuration
 - `DATA_ROOT`: Media storage location

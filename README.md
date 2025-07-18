@@ -162,7 +162,7 @@ The installer will provide URLs for all deployed services:
 ## 📁 Default Directory Structure
 
 ```
-~/homelab/                    # Main homelab directory
+~/hops/                       # Main deployment directory
 ├── docker-compose.yml        # Service definitions
 ├── .env                      # Environment variables
 └── logs/                     # Application logs
@@ -210,7 +210,7 @@ Configuration is now stored encrypted for enhanced security:
 ./lib/secrets.sh get PUID               # Get values
 ./lib/secrets.sh list                   # List all keys
 
-# Legacy: Plaintext configuration in ~/homelab/.env
+# Legacy: Plaintext configuration in ~/hops/.env
 PUID=1000                     # User ID
 PGID=1000                     # Group ID
 TZ=America/New_York          # Timezone
@@ -237,7 +237,7 @@ ACME_EMAIL=admin@yourdomain.com
 ./user-operations stop          # Stop all services
 
 # Legacy: Direct Docker Compose commands
-cd ~/homelab
+cd ~/hops
 docker compose ps                       # View running services
 docker compose logs -f [service-name]  # View logs
 docker compose restart [service-name]  # Restart specific service
@@ -302,7 +302,7 @@ sudo ./hops.sh
 #### Service Won't Start
 ```bash
 # Check service logs
-cd ~/homelab
+cd ~/hops
 docker compose logs [service-name]
 
 # Restart service
@@ -334,7 +334,7 @@ sudo chown -R $USER:$USER /mnt/media /opt/appdata
 sudo tar -czf hops-config-backup.tar.gz /opt/appdata
 
 # Backup compose files
-cp ~/homelab/.env ~/homelab/docker-compose.yml /backup/location/
+cp ~/hops/.env ~/hops/docker-compose.yml /backup/location/
 ```
 
 ### Recovery
@@ -343,7 +343,7 @@ cp ~/homelab/.env ~/homelab/docker-compose.yml /backup/location/
 sudo tar -xzf hops-config-backup.tar.gz -C /
 
 # Redeploy services
-cd ~/homelab
+cd ~/hops
 docker compose up -d
 ```
 

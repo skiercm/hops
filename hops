@@ -158,10 +158,10 @@ check_system_requirements() {
 get_installation_status() {
     local status="not_installed"
     local homelab_dirs=(
-        "$HOME/homelab"
-        "/home/*/homelab"
-        "/opt/homelab"
-        "/srv/homelab"
+        "$HOME/hops"
+        "/home/*/hops"
+        "/opt/hops"
+        "/srv/hops"
     )
     
     # Check for existing installation

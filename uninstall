@@ -14,7 +14,7 @@ uninstall_hops() {
     # LOGGING SETUP
     # --------------------------------------------
     local LOG_DIR="/var/log/hops"
-    local LOG_FILE="$LOG_DIR/homelab-uninstall-$(date +%Y%m%d-%H%M%S).log"
+    local LOG_FILE="$LOG_DIR/hops-uninstall-$(date +%Y%m%d-%H%M%S).log"
     mkdir -p "$LOG_DIR"
     touch "$LOG_FILE"
 
@@ -125,16 +125,16 @@ EOF
     # --------------------------------------------
     find_homelab_directory() {
         local POSSIBLE_DIRS=(
-            "$HOME/homelab"
-            "/home/*/homelab"
-            "/opt/homelab"
-            "/srv/homelab"
+            "$HOME/hops"
+            "/home/*/hops"
+            "/opt/hops"
+            "/srv/hops"
         )
         
         # Try to find from running user's home first
         if [[ -n "$SUDO_USER" ]]; then
             local user_home=$(eval echo "~$SUDO_USER")
-            POSSIBLE_DIRS=("$user_home/homelab" "${POSSIBLE_DIRS[@]}")
+            POSSIBLE_DIRS=("$user_home/hops" "${POSSIBLE_DIRS[@]}")
         fi
         
         HOMELAB_DIR=""
