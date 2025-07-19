@@ -263,7 +263,7 @@ hops/
 ├── privileged-setup       # Root-only operations
 ├── user-operations        # User operations
 ├── services-improved      # Enhanced service definitions
-└── hops.sh               # Legacy main script
+└── hops                  # Main script
 ```
 
 #### Using Library Functions

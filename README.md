@@ -1,7 +1,7 @@
 # HOPS - Homelab Orchestration Provisioning Script
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-3.2.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-3.3.0-blue.svg)]()
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange.svg)]()
 
 **HOPS** is a comprehensive automation tool for deploying homelab infrastructure using Docker Compose. Deploy and manage popular homelab services including media servers, download clients, monitoring tools, and more through an intuitive menu-driven interface.
@@ -14,7 +14,13 @@
 - **macOS**: ✅ Recently improved with v3.2.0 fixes  
 - **Windows (WSL2)**: ⚠️ Limited testing
 
-## 🆕 What's New in v3.2.0
+## 🆕 What's New in v3.3.0
+- **🔄 Automatic Updates**: Git-based update system with backup functionality
+- **📱 Command Line Interface**: `--update`, `--check-updates`, `--version`, `--help` flags
+- **🛡️ Safe Updates**: Automatic backup of local changes before updating
+- **📋 Change Tracking**: View recent changes and version comparison
+
+### Previous Updates (v3.2.0)
 - **Enhanced macOS Support**: Docker Desktop integration, keychain authentication, user directory fixes
 - **Caddy Support**: Added reverse proxy option (user provides configuration)
 - **Bug Fixes**: Password generation, container creation, healthchecks, file permissions
@@ -25,7 +31,8 @@
 - **🚀 Easy Installation**: One-command setup with automatic Docker installation
 - **🔒 Security First**: Encrypted secrets, firewall configuration, input validation
 - **📊 Management**: Real-time monitoring, centralized logs, service control
-- **🔄 Reliability**: Error handling, rollback capabilities, dependency management
+- **🔄 Auto-Updates**: Built-in update system with backup protection
+- **🔧 Reliability**: Error handling, rollback capabilities, dependency management
 - **🌐 Cross-Platform**: Linux, macOS, and Windows (WSL2) support
 
 ## 📱 Supported Services
@@ -76,7 +83,13 @@ sudo ./setup
 
 ```bash
 # Access management interface
-sudo ./hops.sh
+sudo ./hops
+
+# Update HOPS
+sudo ./hops --update                  # Update to latest version
+sudo ./hops --check-updates           # Check for updates
+./hops --version                      # Show version
+./hops --help                         # Show help
 
 # Service operations (no sudo required)
 ./user-operations status              # View service status

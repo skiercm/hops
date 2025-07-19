@@ -5,6 +5,35 @@ All notable changes to HOPS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-01-19
+
+### Added
+- **🔄 Automatic Updates**: Git-based update mechanism with backup functionality
+- **📱 Command Line Interface**: New flags for update management
+  - `--update`: Update HOPS to latest version automatically
+  - `--check-updates`: Check for available updates (returns exit code 1 if updates available)
+  - `--version`: Display current version information
+  - `--help`: Show comprehensive help and usage information
+- **🛡️ Safe Updates**: Automatic backup of local changes before updating
+- **📋 Change Tracking**: Display recent changes and version comparison during updates
+- **🎛️ Interactive Updates**: Update checking integrated into main menu (option 6)
+
+### Changed
+- **Version Numbering**: Updated to v3.3.0 across all components
+- **Menu Structure**: Added "Check for Updates" as menu option 6, shifted other options
+- **Documentation**: Updated README.md and CLAUDE.md with new update functionality
+- **Color Code Handling**: Removed duplicate color definitions, now sourced from lib/common.sh
+
+### Fixed
+- **Script Compatibility**: Resolved readonly variable conflicts between main script and libraries
+- **Update Process**: Robust error handling and rollback for failed updates
+- **Exit Codes**: Proper exit codes for command-line operations
+
+### Security
+- **Backup Protection**: Local changes are automatically backed up before any updates
+- **Git Validation**: Comprehensive validation that HOPS is in a git repository before updates
+- **Privilege Handling**: Updates require appropriate privileges (root/sudo) for system changes
+
 ## [3.2.0] - 2024-07-18
 
 ### Added
@@ -159,14 +188,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Support
 
-- **v3.2.x**: Current stable release with full platform support
+- **v3.3.x**: Current stable release with automatic update support
+- **v3.2.x**: Previous stable release, upgrade recommended
 - **v3.1.x**: Beta features, limited support
 - **v3.0.x**: Legacy support for critical bugs only
 - **v2.x and earlier**: No longer supported
 
 ## Upgrade Path
 
-### From v3.1.x to v3.2.0
+### From v3.2.x to v3.3.0 (Recommended - Automatic)
+```bash
+# Use built-in update system
+cd /path/to/hops
+sudo ./hops --update
+
+# Or use interactive menu
+sudo ./hops
+# Select option 6: Check for Updates
+```
+
+### From v3.1.x to v3.3.0 (Manual)
 ```bash
 # Backup current installation
 sudo tar -czf hops-backup-$(date +%Y%m%d).tar.gz ~/hops /opt/appdata

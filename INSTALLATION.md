@@ -55,7 +55,7 @@ sudo ./privileged-setup              # Root operations
 ./user-operations deploy             # Deploy services
 
 # Legacy method (still supported)
-sudo ./hops.sh
+sudo ./hops
 ```
 
 ### What Gets Installed
@@ -232,7 +232,7 @@ sudo ./privileged-setup               # Root-only operations
 
 ### Option 3: Legacy Installation
 ```bash
-sudo ./hops.sh
+sudo ./hops
 ```
 - **Compatibility**: Original installation method
 - **Full-Featured**: Complete management interface
@@ -243,7 +243,7 @@ sudo ./hops.sh
 ### Check Service Status
 ```bash
 # Via HOPS management interface
-sudo ./hops.sh
+sudo ./hops
 # Select option 4: Service Status
 
 # Via user operations
@@ -324,7 +324,7 @@ wsl -d Ubuntu-22.04
 - **System Logs**: `journalctl -u docker`
 
 ### Getting Help
-1. **Built-in Help**: `sudo ./hops.sh` → Option 7
+1. **Built-in Help**: `sudo ./hops` → Option 7
 2. **Check Logs**: Review installation logs for errors
 3. **Verify Prerequisites**: Ensure all system requirements are met
 4. **Docker Status**: Confirm Docker is running and accessible
