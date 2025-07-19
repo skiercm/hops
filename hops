@@ -2,13 +2,13 @@
 
 # HOPS - Homelab Orchestration Provisioning Script
 # Primary Management Script
-# Version: 3.2.0
+# Version: 3.3.0
 
 # Exit on any error
 set -e
 
 # Script version and metadata
-readonly SCRIPT_VERSION="3.2.0"
+readonly SCRIPT_VERSION="3.3.0"
 readonly SCRIPT_NAME="HOPS"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -17,18 +17,10 @@ readonly INSTALLER_SCRIPT="$SCRIPT_DIR/install"
 readonly UNINSTALLER_SCRIPT="$SCRIPT_DIR/uninstall"
 readonly SERVICE_DEFINITIONS="$SCRIPT_DIR/services"
 
-# Color codes for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly PURPLE='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly WHITE='\033[1;37m'
-readonly NC='\033[0m' # No Color
-
 # Load system utilities
 source "$SCRIPT_DIR/lib/system.sh"
+
+# Color codes are defined in lib/common.sh
 
 # Logging setup (will be set by setup_logging)
 LOG_DIR=""
@@ -546,6 +538,109 @@ show_logs() {
     read -r
 }
 
+# Check for updates
+check_for_updates() {
+    info "Checking for updates..."
+    
+    # Check if we're in a git repository
+    if ! git -C "$SCRIPT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        warning "Not in a git repository. Cannot check for updates."
+        return 1
+    fi
+    
+    # Fetch latest changes
+    if ! git -C "$SCRIPT_DIR" fetch origin main >/dev/null 2>&1; then
+        warning "Failed to fetch updates from remote repository."
+        return 1
+    fi
+    
+    # Check if we're behind
+    local local_commit=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+    local remote_commit=$(git -C "$SCRIPT_DIR" rev-parse origin/main)
+    
+    if [[ "$local_commit" == "$remote_commit" ]]; then
+        success "HOPS is up to date (v$SCRIPT_VERSION)"
+        return 0
+    else
+        local commits_behind=$(git -C "$SCRIPT_DIR" rev-list --count HEAD..origin/main)
+        warning "HOPS is $commits_behind commits behind. Update available!"
+        
+        # Show what's new
+        echo -e "\n${BLUE}📋 Recent changes:${NC}"
+        git -C "$SCRIPT_DIR" log --oneline --max-count=5 HEAD..origin/main | sed 's/^/   • /'
+        return 1
+    fi
+}
+
+# Update HOPS
+update_hops() {
+    show_header
+    echo -e "${WHITE}🔄 HOPS Update${NC}\n"
+    
+    # Check if we're in a git repository
+    if ! git -C "$SCRIPT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        error_exit "Not in a git repository. Cannot update automatically."
+    fi
+    
+    # Check for local changes
+    if ! git -C "$SCRIPT_DIR" diff-index --quiet HEAD --; then
+        warning "Local changes detected. These will be backed up before updating."
+        
+        # Create backup
+        local backup_dir="$SCRIPT_DIR/.backup-$(date +%Y%m%d-%H%M%S)"
+        info "Creating backup at: $backup_dir"
+        
+        if ! cp -r "$SCRIPT_DIR" "$backup_dir"; then
+            error_exit "Failed to create backup"
+        fi
+        
+        success "Backup created successfully"
+    fi
+    
+    # Fetch and show what will be updated
+    info "Fetching latest changes..."
+    if ! git -C "$SCRIPT_DIR" fetch origin main; then
+        error_exit "Failed to fetch updates from remote repository"
+    fi
+    
+    # Check if update is needed
+    if ! check_for_updates; then
+        echo -e "\n${WHITE}Continue with update? [y/N]: ${NC}"
+        read -r update_choice
+        if [[ ! "$update_choice" =~ ^[Yy]$ ]]; then
+            info "Update cancelled"
+            echo -e "\n${WHITE}Press Enter to return to main menu...${NC}"
+            read -r
+            return
+        fi
+    else
+        info "Already up to date"
+        echo -e "\n${WHITE}Press Enter to return to main menu...${NC}"
+        read -r
+        return
+    fi
+    
+    # Perform the update
+    info "Updating HOPS..."
+    if git -C "$SCRIPT_DIR" pull origin main; then
+        success "HOPS updated successfully!"
+        
+        # Source the updated script to get new version
+        if [[ -f "$SCRIPT_DIR/hops" ]]; then
+            local new_version=$(grep '^readonly SCRIPT_VERSION=' "$SCRIPT_DIR/hops" | cut -d'"' -f2)
+            success "Updated to version $new_version"
+        fi
+        
+        echo -e "\n${YELLOW}💡 Note: Please restart HOPS to use the updated version${NC}"
+    else
+        error_exit "Update failed. Your installation may be in an inconsistent state."
+    fi
+    
+    echo -e "\n${WHITE}Press Enter to exit (restart HOPS to use new version)...${NC}"
+    read -r
+    exit 0
+}
+
 # Show help information
 show_help() {
     show_header
@@ -624,11 +719,12 @@ show_main_menu() {
         echo -e "  5) Access Information ${YELLOW}(not installed)${NC}"
     fi
     
-    echo -e "  6) View Logs"
-    echo -e "  7) Help & Documentation"
-    echo -e "  8) Exit"
+    echo -e "  6) Check for Updates"
+    echo -e "  7) View Logs"
+    echo -e "  8) Help & Documentation"
+    echo -e "  9) Exit"
     
-    echo -e "\n${WHITE}Select an option [1-8]: ${NC}"
+    echo -e "\n${WHITE}Select an option [1-9]: ${NC}"
 }
 
 # Main program loop
@@ -662,24 +758,87 @@ main() {
                 show_access_info
                 ;;
             6)
-                show_logs
+                # Check for updates and optionally update
+                if check_for_updates; then
+                    echo -e "\n${WHITE}Press Enter to return to main menu...${NC}"
+                    read -r
+                else
+                    echo -e "\n${WHITE}Would you like to update now? [y/N]: ${NC}"
+                    read -r update_choice
+                    if [[ "$update_choice" =~ ^[Yy]$ ]]; then
+                        update_hops
+                    fi
+                fi
                 ;;
             7)
-                show_help
+                show_logs
                 ;;
             8)
+                show_help
+                ;;
+            9)
                 info "Thank you for using HOPS!"
                 exit 0
                 ;;
             *)
-                warning "Invalid option. Please select 1-8."
+                warning "Invalid option. Please select 1-9."
                 sleep 2
                 ;;
         esac
     done
 }
 
+# Handle command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --update)
+                init_logging
+                check_root
+                update_hops
+                exit $?
+                ;;
+            --check-updates)
+                init_logging
+                if check_for_updates; then
+                    exit 0
+                else
+                    exit 1
+                fi
+                ;;
+            --version)
+                echo "HOPS v$SCRIPT_VERSION"
+                exit 0
+                ;;
+            --help|-h)
+                echo "HOPS - Homelab Orchestration Provisioning Script v$SCRIPT_VERSION"
+                echo ""
+                echo "Usage: $0 [options]"
+                echo ""
+                echo "Options:"
+                echo "  --update         Update HOPS to the latest version"
+                echo "  --check-updates  Check if updates are available (exit 1 if updates available)"
+                echo "  --version        Show version information"
+                echo "  --help, -h       Show this help message"
+                echo ""
+                echo "When run without options, HOPS starts in interactive mode."
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                echo "Use --help for usage information."
+                exit 1
+                ;;
+        esac
+        shift
+    done
+}
+
 # Script entry point
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
+    # Parse command line arguments first
+    parse_args "$@"
+    
+    # If no arguments provided, run main interactive mode
+    main
 fi
