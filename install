@@ -665,7 +665,13 @@ EOF
         log "🚀 Starting deployment..."
 
         # Ensure we're in the correct directory
-        local HOMELAB_DIR="$HOME/hops"
+        # When running with sudo, use the original user's home directory
+        local HOMELAB_DIR
+        if [[ -n "$SUDO_USER" ]]; then
+            HOMELAB_DIR="$(eval echo ~$SUDO_USER)/hops"
+        else
+            HOMELAB_DIR="$HOME/hops"
+        fi
         if [[ ! -d "$HOMELAB_DIR" ]]; then
             error_exit_with_rollback "Homelab directory not found: $HOMELAB_DIR"
         fi
