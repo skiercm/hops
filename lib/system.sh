@@ -1148,7 +1148,7 @@ install_docker() {
             local ubuntu_codename
             echo "DEBUG: Configuring Docker repository"
             echo "DEBUG: Detected OS: $(lsb_release -is)"
-            if [[ "$(lsb_release -is)" == "LinuxMint" ]]; then
+            if [[ "$(lsb_release -is)" == "Linuxmint" ]]; then
                 echo "DEBUG: Linux Mint detected, checking for UBUNTU_CODENAME"
                 # Linux Mint provides UBUNTU_CODENAME in /etc/os-release
                 if [[ -f /etc/os-release ]]; then

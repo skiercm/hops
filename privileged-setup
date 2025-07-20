@@ -42,7 +42,7 @@ install_docker() {
     
     # Add Docker repository with proper Ubuntu codename detection for Linux Mint
     local ubuntu_codename
-    if [[ "$(lsb_release -is)" == "LinuxMint" ]]; then
+    if [[ "$(lsb_release -is)" == "Linuxmint" ]]; then
         # Linux Mint provides UBUNTU_CODENAME in /etc/os-release
         if [[ -f /etc/os-release ]]; then
             ubuntu_codename=$(grep '^UBUNTU_CODENAME=' /etc/os-release | cut -d= -f2)
