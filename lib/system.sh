@@ -602,6 +602,7 @@ get_primary_ip() {
 
 # Remove existing Docker installation on Linux
 remove_docker_linux() {
+    echo "DEBUG: remove_docker_linux() function called"
     info "🗑️ Removing existing Docker installation..."
     
     # Stop Docker service if running
@@ -621,6 +622,23 @@ remove_docker_linux() {
         info "🔧 Disabling Docker service..."
         systemctl disable docker
     fi
+    
+    # Remove Docker repository and GPG keys FIRST to prevent apt errors
+    info "🗑️ Removing Docker repository and keys..."
+    rm -f /etc/apt/sources.list.d/docker.list
+    rm -f /etc/apt/sources.list.d/*docker*
+    rm -f /etc/apt/keyrings/docker.gpg
+    rm -f /usr/share/keyrings/docker*
+    rm -f /etc/apt/keyrings/docker*
+    
+    # Also check for and remove any repositories that might contain Linux Mint codenames
+    if grep -r "download.docker.com.*xia\|download.docker.com.*vera\|download.docker.com.*vanessa" /etc/apt/sources.list.d/ 2>/dev/null; then
+        info "🗑️ Found Docker repositories with Linux Mint codenames, removing..."
+        grep -l "download.docker.com.*xia\|download.docker.com.*vera\|download.docker.com.*vanessa" /etc/apt/sources.list.d/* 2>/dev/null | xargs rm -f
+    fi
+    
+    # Clean apt cache to remove any cached repository data
+    apt-get clean
     
     # Remove Docker packages
     info "🗑️ Removing Docker packages..."
@@ -657,16 +675,7 @@ remove_docker_linux() {
         groupdel docker 2>/dev/null || true
     fi
     
-    # Remove Docker repository
-    if [[ -f "/etc/apt/sources.list.d/docker.list" ]]; then
-        info "🗑️ Removing Docker repository..."
-        rm -f "/etc/apt/sources.list.d/docker.list"
-    fi
-    
-    # Remove Docker GPG key
-    if [[ -f "/etc/apt/keyrings/docker.gpg" ]]; then
-        rm -f "/etc/apt/keyrings/docker.gpg"
-    fi
+    # Repository and GPG keys already removed above
     
     # Remove any remaining Docker processes
     pkill -f docker 2>/dev/null || true
@@ -1031,8 +1040,10 @@ install_docker() {
             fi
             ;;
         "ubuntu"|"debian"|"linuxmint"|"mint")
+            echo "DEBUG: Linux/Ubuntu/Mint Docker installation path"
             # Check for existing Docker installation
             if command_exists docker; then
+                echo "DEBUG: Existing Docker installation detected"
                 local docker_version=$(docker --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
                 
                 warning "Existing Docker installation detected:"
@@ -1070,9 +1081,12 @@ install_docker() {
                     fi
                     
                     success "Existing Docker installation is compatible"
+                    echo "DEBUG: Returning early - skipping Linux Mint repository fix"
                     return 0
                 fi
             fi
+            
+            echo "DEBUG: No existing Docker found, proceeding with fresh installation"
             
             # Check for and handle conflicting files
             local conflicting_files=()
@@ -1132,10 +1146,14 @@ install_docker() {
             
             # Add Docker repository with proper Ubuntu codename detection for Linux Mint
             local ubuntu_codename
+            echo "DEBUG: Configuring Docker repository"
+            echo "DEBUG: Detected OS: $(lsb_release -is)"
             if [[ "$(lsb_release -is)" == "LinuxMint" ]]; then
+                echo "DEBUG: Linux Mint detected, checking for UBUNTU_CODENAME"
                 # Linux Mint provides UBUNTU_CODENAME in /etc/os-release
                 if [[ -f /etc/os-release ]]; then
                     ubuntu_codename=$(grep '^UBUNTU_CODENAME=' /etc/os-release | cut -d= -f2)
+                    echo "DEBUG: Found UBUNTU_CODENAME=$ubuntu_codename in /etc/os-release"
                 fi
                 
                 # Fallback to version mapping if UBUNTU_CODENAME not found
