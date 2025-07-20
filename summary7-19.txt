@@ -65,31 +65,106 @@ ubuntu_codename=$(grep '^UBUNTU_CODENAME=' /etc/os-release | cut -d= -f2)
 - This is the correct Ubuntu codename that Docker repositories support
 - Should eliminate need for manual version mapping
 
-### Current Status
-- Two commits pushed to fix the issue
-- System cleanup performed on Linux Mint machine
-- Error persists despite fixes
-- User is updating Linux Mint system and rebooting before next test
+#### 5. Root Cause Discovery - Wrong Installation Path (Session 2)
+**Date:** July 19, 2025 (Evening)
+**Discovery:** User was running `./setup` script, but fixes were applied to different code paths
+**Investigation Steps:**
+- Confirmed user had latest code with fixes (commit 4fd78ec)
+- System was completely clean of Docker repositories
+- `UBUNTU_CODENAME=noble` correctly detected
+- Still getting "xia" error despite fixes
 
-### Next Steps
-1. Test HOPS installation after Linux Mint system updates and reboot
-2. If issue persists, investigate:
-   - Whether updated code is actually being executed
-   - Alternative installation paths being used
-   - System-level caching preventing fix from taking effect
-3. Consider manual repository configuration as verification step
-4. Update changelog if fix is successful
+**Key Finding:** The `setup` script uses `lib/system.sh::install_docker()` which was calling Docker's convenience script `curl -fsSL https://get.docker.com | sh`, NOT the fixed installation functions in `privileged-setup` or `lib/privileges.sh`.
+
+#### 6. Fix Applied to Correct Installation Path (Commit ce0f7f2)
+**Files Modified:** `lib/system.sh` (lines 1122-1168)
+**Approach:** 
+- Replaced Docker convenience script with manual repository setup
+- Added Linux Mint Ubuntu codename detection logic to `lib/system.sh`
+- Included same UBUNTU_CODENAME detection and fallback mapping
+- Added debug output: "Using Ubuntu codename: X for Docker repository"
+
+**Result:** User tested after pulling latest code - still experiencing same "xia" error
+
+### Current Status (End of Session 2)
+**Problem State:** Persistent "xia" repository error despite comprehensive fixes
+**Fixes Applied:**
+- Three different installation paths updated with Linux Mint detection
+- Complete Docker repository cleanup performed multiple times
+- Debug output added to track codename detection
+- Manual testing confirmed UBUNTU_CODENAME=noble is available
+
+**Unresolved Questions:**
+1. Why debug output from fixed code is not appearing in installation logs
+2. Whether there's a fourth Docker installation path not yet discovered
+3. Possible system-level caching or existing Docker installation interfering
+4. Whether the correct script path is actually being executed
+
+### Next Steps (For Tomorrow)
+1. **Execution Path Verification:** Add debug traces to determine which exact functions are being called during `./setup`
+2. **Docker Installation Check:** Verify if Docker is already installed and causing early function returns
+3. **Complete Docker Removal:** If Docker exists, completely remove it before testing fixes
+4. **Alternative Installation Methods:** Test other entry points (`./hops`, `./install`, `./privileged-setup` directly)
+5. **System State Analysis:** Check for any persistent apt configurations or cached repository information
 
 ### Technical Notes
 - Linux Mint consistently provides `UBUNTU_CODENAME` in modern versions
 - Using this field is more reliable than version-based mapping
 - Docker installation uses Ubuntu repositories for Debian-based distributions
 - Issue affects all Linux Mint installations using HOPS
+- The Docker convenience script `get.docker.com` has its own broken Linux Mint detection
 
 ### Files Modified
-- `privileged-setup` (lines 43-70)
-- `lib/privileges.sh` (lines 199-226)
+- `privileged-setup` (lines 43-70, 72) - ✅ Fixed
+- `lib/privileges.sh` (lines 199-226, 228) - ✅ Fixed  
+- `lib/system.sh` (lines 1122-1168) - ✅ Fixed
+
+#### 7. Final Resolution (Session 3 - July 20, 2025)
+**Root Cause Identified:** Critical case sensitivity bug in Linux Mint detection
+- `lsb_release -is` returns `"Linuxmint"` (lowercase 'm')
+- All code was checking for `"LinuxMint"` (uppercase 'M')
+- This caused Linux Mint detection to fail completely, falling back to "xia" codename
+
+**Final Fixes Applied:**
+1. **Case Sensitivity Fix (Commit 736ed1b):**
+   - Fixed `lib/system.sh:1151`: `"LinuxMint"` → `"Linuxmint"`
+   - Fixed `privileged-setup:45`: `"LinuxMint"` → `"Linuxmint"`  
+   - Fixed `lib/privileges.sh:201`: `"LinuxMint"` → `"Linuxmint"`
+
+2. **Debug Tracing Added (Commit d2e9a69):**
+   - Added comprehensive debug output to trace execution paths
+   - Fixed Docker repository cleanup order in `remove_docker_linux()`
+   - Added specific cleanup for Linux Mint codenames (xia, vera, vanessa)
+
+3. **Docker Service Issues (Manual Fix):**
+   - Created missing `docker` group: `sudo groupadd docker`
+   - Added user to docker group: `sudo usermod -aG docker skier`
+   - Started Docker services: `sudo systemctl start docker.socket docker`
+
+4. **Directory Detection Fix (Commit a28a6e5):**
+   - Fixed sudo home directory resolution in `install` script
+   - Changed `$HOME/hops` to use `$SUDO_USER` home directory
+   - Resolved `/root/hops` vs `/home/skier/hops` issue
+
+**Final Result:** ✅ **COMPLETE SUCCESS**
+- Docker repositories now use correct Ubuntu codename "noble"
+- Sonarr container deployed and running successfully
+- Web UI accessible at localhost:8989
+- All Linux Mint Docker repository issues resolved
+
+### Current Status (RESOLVED)
+**Problem State:** ✅ **COMPLETELY RESOLVED**
+**Final Working State:**
+- Linux Mint detection working: `DEBUG: Linux Mint detected, checking for UBUNTU_CODENAME`
+- Ubuntu codename detection: `DEBUG: Found UBUNTU_CODENAME=noble in /etc/os-release`
+- Repository configuration: `ℹ️ Using Ubuntu codename: noble for Docker repository`
+- Docker installation: Downloads from `https://download.docker.com/linux/ubuntu noble`
+- Service deployment: Sonarr running and accessible
 
 ### Git Commits
 - `af57a77`: Initial Linux Mint version mapping fix
-- `4fd78ec`: Improved fix using UBUNTU_CODENAME detection
+- `4fd78ec`: Improved fix using UBUNTU_CODENAME detection  
+- `ce0f7f2`: Fix lib/system.sh Docker installation path with manual repository setup
+- `d2e9a69`: Fix Docker repository issues with debug tracing and cleanup order
+- `736ed1b`: Fix critical Linux Mint case sensitivity bug in repository detection
+- `a28a6e5`: Fix homelab directory detection when running with sudo
