@@ -811,6 +811,7 @@ check_existing_docker_macos() {
 
 # Install Docker for the current platform
 install_docker() {
+    echo "DEBUG: install_docker() function called from lib/system.sh"
     info "🐳 Installing Docker..."
     
     case "$OS_NAME_LOWER" in
@@ -1119,9 +1120,53 @@ install_docker() {
                 fi
             fi
             
-            # Install fresh Docker using the official script
+            # Install fresh Docker using manual repository setup
             info "📦 Installing Docker Engine..."
-            curl -fsSL https://get.docker.com | sh
+            
+            # Install required packages
+            apt-get update
+            apt-get install -y ca-certificates curl gnupg lsb-release
+            
+            # Add Docker GPG key
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+            
+            # Add Docker repository with proper Ubuntu codename detection for Linux Mint
+            local ubuntu_codename
+            if [[ "$(lsb_release -is)" == "LinuxMint" ]]; then
+                # Linux Mint provides UBUNTU_CODENAME in /etc/os-release
+                if [[ -f /etc/os-release ]]; then
+                    ubuntu_codename=$(grep '^UBUNTU_CODENAME=' /etc/os-release | cut -d= -f2)
+                fi
+                
+                # Fallback to version mapping if UBUNTU_CODENAME not found
+                if [[ -z "$ubuntu_codename" ]]; then
+                    case "$(lsb_release -rs)" in
+                        "22"|"22.1"|"22.2"|"22.3")
+                            ubuntu_codename="noble"  # Ubuntu 24.04
+                            ;;
+                        "21"|"21.1"|"21.2"|"21.3")
+                            ubuntu_codename="jammy"  # Ubuntu 22.04
+                            ;;
+                        "20"|"20.1"|"20.2"|"20.3")
+                            ubuntu_codename="focal"  # Ubuntu 20.04
+                            ;;
+                        *)
+                            ubuntu_codename="noble"  # Default to latest LTS
+                            ;;
+                    esac
+                fi
+            else
+                ubuntu_codename=$(lsb_release -cs)
+            fi
+            
+            info "Using Ubuntu codename: $ubuntu_codename for Docker repository"
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $ubuntu_codename stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            
+            # Update package index with Docker packages
+            apt-get update
+            
+            # Install Docker
+            apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
             
             # Add user to docker group if we're running with sudo
             if [[ -n "$SUDO_USER" ]]; then

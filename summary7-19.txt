@@ -1,0 +1,95 @@
+# HOPS Linux Mint Docker Repository Troubleshooting Summary
+## Date: July 19, 2025
+
+### Problem Description
+HOPS installation failing on Linux Mint 22.1 with Docker repository error:
+```
+E: The repository 'https://download.docker.com/linux/ubuntu xia Release' does not have a Release file.
+N: Updating from such a repository can't be done securely, and is therefore disabled by default.
+```
+
+### Root Cause Analysis
+- Linux Mint uses its own codenames (e.g., "xia" for version 22.1)
+- Docker repositories are structured around Ubuntu codenames (e.g., "noble", "jammy", "focal")
+- HOPS was using `lsb_release -cs` which returns "xia" instead of the Ubuntu base codename
+- Docker doesn't have a repository for Linux Mint's "xia" codename
+
+### System Information (Linux Mint 22.1)
+```
+Distributor ID: LinuxMint
+Description: Linux Mint 22.1
+Release: 22.1
+Codename: xia
+UBUNTU_CODENAME=noble (from /etc/os-release)
+```
+
+### Troubleshooting Steps Attempted
+
+#### 1. Initial Fix Attempt (Commit af57a77)
+**Files Modified:** `privileged-setup`, `lib/privileges.sh`
+**Approach:** Added Linux Mint version to Ubuntu codename mapping
+- Mint 22.x → Ubuntu 24.04 (noble)
+- Mint 21.x → Ubuntu 22.04 (jammy)
+- Mint 20.x → Ubuntu 20.04 (focal)
+
+**Result:** Still failed with same error
+
+#### 2. System Cleanup
+**Commands Executed:**
+```bash
+sudo rm -f /etc/apt/sources.list.d/docker*
+sudo rm -f /etc/apt/sources.list.d/*docker*
+sudo rm -f /usr/share/keyrings/docker*
+sudo rm -f /etc/apt/keyrings/docker*
+sudo grep -i docker /etc/apt/sources.list
+sudo apt clean
+sudo apt autoclean
+```
+
+**Result:** Confirmed clean state, but error persisted
+
+#### 3. Improved Fix (Commit 4fd78ec)
+**Files Modified:** `privileged-setup`, `lib/privileges.sh`
+**Approach:** Use `UBUNTU_CODENAME` from `/etc/os-release` with fallback to version mapping
+```bash
+# Primary method: Read UBUNTU_CODENAME from /etc/os-release
+ubuntu_codename=$(grep '^UBUNTU_CODENAME=' /etc/os-release | cut -d= -f2)
+
+# Fallback: Version mapping if UBUNTU_CODENAME not found
+```
+
+**Result:** Still experiencing same error after system cleanup
+
+#### 4. Discovery of UBUNTU_CODENAME
+**Key Finding:** Linux Mint 22.1 provides `UBUNTU_CODENAME=noble` in `/etc/os-release`
+- This is the correct Ubuntu codename that Docker repositories support
+- Should eliminate need for manual version mapping
+
+### Current Status
+- Two commits pushed to fix the issue
+- System cleanup performed on Linux Mint machine
+- Error persists despite fixes
+- User is updating Linux Mint system and rebooting before next test
+
+### Next Steps
+1. Test HOPS installation after Linux Mint system updates and reboot
+2. If issue persists, investigate:
+   - Whether updated code is actually being executed
+   - Alternative installation paths being used
+   - System-level caching preventing fix from taking effect
+3. Consider manual repository configuration as verification step
+4. Update changelog if fix is successful
+
+### Technical Notes
+- Linux Mint consistently provides `UBUNTU_CODENAME` in modern versions
+- Using this field is more reliable than version-based mapping
+- Docker installation uses Ubuntu repositories for Debian-based distributions
+- Issue affects all Linux Mint installations using HOPS
+
+### Files Modified
+- `privileged-setup` (lines 43-70)
+- `lib/privileges.sh` (lines 199-226)
+
+### Git Commits
+- `af57a77`: Initial Linux Mint version mapping fix
+- `4fd78ec`: Improved fix using UBUNTU_CODENAME detection
