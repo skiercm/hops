@@ -40,8 +40,29 @@ install_docker() {
     # Add Docker GPG key
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
     
-    # Add Docker repository
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    # Add Docker repository with proper Ubuntu codename mapping for Linux Mint
+    local ubuntu_codename
+    if [[ "$(lsb_release -is)" == "LinuxMint" ]]; then
+        # Map Linux Mint versions to Ubuntu base versions
+        case "$(lsb_release -rs)" in
+            "22"|"22.1"|"22.2"|"22.3")
+                ubuntu_codename="noble"  # Ubuntu 24.04
+                ;;
+            "21"|"21.1"|"21.2"|"21.3")
+                ubuntu_codename="jammy"  # Ubuntu 22.04
+                ;;
+            "20"|"20.1"|"20.2"|"20.3")
+                ubuntu_codename="focal"  # Ubuntu 20.04
+                ;;
+            *)
+                ubuntu_codename="noble"  # Default to latest LTS
+                ;;
+        esac
+    else
+        ubuntu_codename=$(lsb_release -cs)
+    fi
+    
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $ubuntu_codename stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     
     # Update package index with Docker packages
     apt-get update
